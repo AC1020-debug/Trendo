@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'product_data.dart';
 import 'package:intl/intl.dart';
+// Import utility classes
+import '../utils/stock_analyzer.dart' as stock;
+import '../utils/ui_utils.dart' as ui;
+import '../models/enums.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final ProductData product;
@@ -14,12 +18,6 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   String selectedTimeframe = 'Daily';
   final List<String> timeframes = ['Daily', 'Weekly', 'Monthly'];
-
-  // Helper method for responsive font
-  double scaleFont(BuildContext context, double fontSize) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    return fontSize * (screenWidth / 375); // 375 reference width
-  }
 
   // Generate forecast dynamically
   List<Map<String, dynamic>> getForecastData(String timeframe) {
@@ -64,57 +62,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return data;
   }
 
-  String getRiskLevel(String? daysWithoutStock) {
-    if (daysWithoutStock == null || daysWithoutStock.isEmpty) return 'Low';
-    final match = RegExp(r'(\d+)').firstMatch(daysWithoutStock);
-    if (match == null) return 'Low';
-    int days = int.parse(match.group(1)!);
-    if (days < 5) return 'High';
-    if (days <= 30) return 'Medium';
-    return 'Low';
-  }
-
-  Color getRiskColor(String riskLevel) {
-    switch (riskLevel) {
-      case 'High':
-        return Colors.red;
-      case 'Medium':
-        return Colors.orange;
-      case 'Low':
-      default:
-        return Colors.green;
-    }
-  }
-
-  Color getStatusColor(String status) {
-    switch (status) {
-      case 'critical':
-        return Colors.red;
-      case 'warning':
-        return Colors.orange;
-      case 'normal':
-      default:
-        return Colors.green;
-    }
-  }
-
-  IconData getStatusIcon(String status) {
-    switch (status) {
-      case 'critical':
-        return Icons.error;
-      case 'warning':
-        return Icons.warning;
-      case 'normal':
-      default:
-        return Icons.check_circle;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    String riskLevel = getRiskLevel(widget.product.daysWithoutStock);
-    Color riskColor = getRiskColor(riskLevel);
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue[600],
@@ -129,7 +78,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         title: Text(
           widget.product.name,
           style: TextStyle(
-            fontSize: scaleFont(context, 20),
+            fontSize: ui.UIUtils.getResponsiveFontSize(context, 20),
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -137,16 +86,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: ui.UIUtils.getResponsivePadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusCard(context, riskLevel, riskColor),
-            SizedBox(height: scaleFont(context, 20)),
+            _buildStatusCard(context),
+            const SizedBox(height: 20),
             _buildTimeframeSelector(context),
-            SizedBox(height: scaleFont(context, 16)),
+            const SizedBox(height: 16),
             _buildForecastCard(context),
-            SizedBox(height: scaleFont(context, 20)),
+            const SizedBox(height: 20),
             _buildCriticalInfoCard(context),
           ],
         ),
@@ -154,20 +103,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  Widget _buildStatusCard(BuildContext context, String riskLevel, Color riskColor) {
+  Widget _buildStatusCard(BuildContext context) {
+    // Use StockAnalyzer for comprehensive analysis
+    stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
+      widget.product.daysWithoutStock, 
+      widget.product.forecast
+    );
+
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(scaleFont(context, 20)),
+      padding: ui.UIUtils.getResponsivePadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: ui.UIUtils.getCardBorderRadius(),
+        boxShadow: ui.UIUtils.getCardShadow(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,41 +124,41 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           Text(
             'Status:',
             style: TextStyle(
-              fontSize: scaleFont(context, 18),
+              fontSize: ui.UIUtils.getResponsiveFontSize(context, 18),
               fontWeight: FontWeight.w500,
               color: Colors.grey[700],
             ),
           ),
-          SizedBox(height: scaleFont(context, 8)),
+          const SizedBox(height: 8),
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: scaleFont(context, 12),
-              vertical: scaleFont(context, 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: riskColor.withOpacity(0.1),
+              color: analysis.riskColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: riskColor, width: 1),
+              border: Border.all(color: analysis.riskColor, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  riskLevel == 'High'
+                  analysis.riskLevel == RiskLevel.high
                       ? Icons.error
-                      : riskLevel == 'Medium'
+                      : analysis.riskLevel == RiskLevel.medium
                           ? Icons.warning
                           : Icons.check_circle,
-                  color: riskColor,
-                  size: scaleFont(context, 16),
+                  color: analysis.riskColor,
+                  size: ui.UIUtils.getResponsiveFontSize(context, 16),
                 ),
-                SizedBox(width: scaleFont(context, 6)),
+                const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    '$riskLevel Stock - Action Needed',
+                    '${analysis.stockStatusString} - ${analysis.riskLevel.displayName}',
                     style: TextStyle(
-                      fontSize: scaleFont(context, 14),
-                      color: riskColor,
+                      fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
+                      color: analysis.riskColor,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -218,29 +167,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ],
             ),
           ),
-          SizedBox(height: scaleFont(context, 16)),
+          const SizedBox(height: 16),
           if (widget.product.currentStock != null)
             Text(
               'Current Stock: ${widget.product.currentStock}',
               style: TextStyle(
-                fontSize: scaleFont(context, 16),
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
                 color: Colors.grey[700],
               ),
             ),
-            SizedBox(height: 5),
           if (widget.product.daysWithoutStock != null)
             Text(
               'Days until without Stock: ${widget.product.daysWithoutStock}',
               style: TextStyle(
-                fontSize: scaleFont(context, 16),
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
                 color: Colors.grey[700],
               ),
             ),
-            SizedBox(height: 5),
           Text(
             'Forecast: ${widget.product.forecast}',
             style: TextStyle(
-              fontSize: scaleFont(context, 16),
+              fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
               color: Colors.grey[700],
             ),
           ),
@@ -257,29 +204,21 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           child: GestureDetector(
             onTap: () => setState(() => selectedTimeframe = timeframe),
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: scaleFont(context, 4)),
-              padding: EdgeInsets.symmetric(vertical: scaleFont(context, 12)),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: isSelected ? Colors.blue[600] : Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: ui.UIUtils.getCardBorderRadius(),
                 border: Border.all(
                   color: isSelected ? Colors.blue[600]! : Colors.grey[300]!,
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ]
-                    : [],
+                boxShadow: isSelected ? ui.UIUtils.getCardShadow(opacity: 0.2) : [],
               ),
               child: Text(
                 timeframe,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: scaleFont(context, 14),
+                  fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
                   fontWeight: FontWeight.w500,
                   color: isSelected ? Colors.white : Colors.grey[700],
                 ),
@@ -295,17 +234,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     List<Map<String, dynamic>> data = getForecastData(selectedTimeframe);
 
     return Container(
-      padding: EdgeInsets.all(scaleFont(context, 20)),
+      padding: ui.UIUtils.getResponsivePadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: ui.UIUtils.getCardBorderRadius(),
+        boxShadow: ui.UIUtils.getCardShadow(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,15 +250,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ? 'Next 4 Weeks Forecast'
                     : 'Next 4 Months Forecast',
             style: TextStyle(
-              fontSize: scaleFont(context, 18),
+              fontSize: ui.UIUtils.getResponsiveFontSize(context, 18),
               fontWeight: FontWeight.bold,
               color: Colors.grey[800],
             ),
           ),
-          SizedBox(height: scaleFont(context, 16)),
+          const SizedBox(height: 16),
           ...data.map(
             (item) => Padding(
-              padding: EdgeInsets.only(bottom: scaleFont(context, 12)),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
                   Expanded(
@@ -333,7 +266,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: Text(
                       item['period'],
                       style: TextStyle(
-                        fontSize: scaleFont(context, 14),
+                        fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
                         color: Colors.grey[700],
                       ),
                     ),
@@ -343,16 +276,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: Text(
                       '${item['units']} units',
                       style: TextStyle(
-                        fontSize: scaleFont(context, 14),
+                        fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
                         fontWeight: FontWeight.w500,
                         color: Colors.grey[800],
                       ),
                     ),
                   ),
                   Icon(
-                    getStatusIcon(item['status']),
-                    color: getStatusColor(item['status']),
-                    size: scaleFont(context, 20),
+                    stock.StockAnalyzer.getStatusIcon(item['status']),
+                    color: stock.StockAnalyzer.getStatusColor(item['status']),
+                    size: ui.UIUtils.getResponsiveFontSize(context, 20),
                   ),
                 ],
               ),
@@ -364,12 +297,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildCriticalInfoCard(BuildContext context) {
+    // Use StockAnalyzer to determine risk level
+    stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
+      widget.product.daysWithoutStock, 
+      widget.product.forecast
+    );
+
+    // Show if there's a recommendation OR if it's critical
+    bool hasRecommendation = widget.product.recommendation != null && 
+                           widget.product.recommendation!.isNotEmpty;
+    
+    if (!hasRecommendation && !analysis.isCritical) return const SizedBox();
+
     return Container(
-      padding: EdgeInsets.all(scaleFont(context, 20)),
+      padding: ui.UIUtils.getResponsivePadding(context),
       decoration: BoxDecoration(
-        color: Colors.orange[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange[200]!, width: 1),
+        color: analysis.isCritical ? Colors.orange[50] : Colors.blue[50],
+        borderRadius: ui.UIUtils.getCardBorderRadius(),
+        border: Border.all(
+          color: analysis.isCritical ? Colors.orange[200]! : Colors.blue[200]!, 
+          width: 1
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,54 +325,60 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           Row(
             children: [
               Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.orange[600],
-                size: scaleFont(context, 24),
+                analysis.isCritical ? Icons.warning_amber_rounded : Icons.info_outline,
+                color: analysis.isCritical ? Colors.orange[600] : Colors.blue[600],
+                size: ui.UIUtils.getResponsiveFontSize(context, 24),
               ),
-              SizedBox(width: scaleFont(context, 8)),
-              Text(
-                'Critical - Stockout Expected',
-                style: TextStyle(
-                  fontSize: scaleFont(context, 16),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange[800],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  analysis.isCritical 
+                    ? 'Critical - Stockout Expected'
+                    : 'Recommendation',
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: analysis.isCritical ? Colors.orange[800] : Colors.blue[800],
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: scaleFont(context, 12)),
-          Text(
-            'Product needed by Wednesday',
-            style: TextStyle(
-              fontSize: scaleFont(context, 14),
-              color: Colors.orange[700],
-              fontWeight: FontWeight.w500,
+          if (analysis.isCritical) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Product needed soon',
+              style: TextStyle(
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
+                color: Colors.orange[700],
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          SizedBox(height: scaleFont(context, 16)),
-          if (widget.product.recommendation != null &&
-              widget.product.recommendation!.isNotEmpty)
+          ],
+          if (hasRecommendation) ...[
+            const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   Icons.lightbulb_outline,
-                  color: Colors.orange[600],
-                  size: scaleFont(context, 20),
+                  color: analysis.isCritical ? Colors.orange[600] : Colors.blue[600],
+                  size: ui.UIUtils.getResponsiveFontSize(context, 20),
                 ),
-                SizedBox(width: scaleFont(context, 8)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.product.recommendation!,
                     style: TextStyle(
-                      fontSize: scaleFont(context, 14),
-                      color: Colors.orange[700],
+                      fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
+                      color: analysis.isCritical ? Colors.orange[700] : Colors.blue[700],
                       fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
               ],
             ),
+          ],
         ],
       ),
     );

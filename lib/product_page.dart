@@ -32,32 +32,104 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   void _showImagePicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Wrap(
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Select Product Image',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Choose from Gallery'),
+              _buildImagePickerOption(
+                icon: Icons.camera_alt,
+                label: 'Camera',
                 onTap: () {
-                  Navigator.of(context).pop();
-                  _selectFromGallery();
+                  Navigator.pop(context);
+                  _takePhoto();
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.photo_camera),
-                title: Text('Take Photo'),
+              _buildImagePickerOption(
+                icon: Icons.photo_library,
+                label: 'Gallery',
                 onTap: () {
-                  Navigator.of(context).pop();
-                  _takePhoto();
+                  Navigator.pop(context);
+                  _selectFromGallery();
                 },
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildImagePickerOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: (color ?? Colors.blue[600])?.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: color ?? Colors.blue[600]!,
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 30,
+              color: color ?? Colors.blue[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: color ?? Colors.grey[800],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -132,35 +204,51 @@ class _ProductPageState extends State<ProductPage> {
           child: Column(
             children: [
               // Image Upload (center top)
-              Center(
-                child: Column(
+              // Product Image Upload
+Center(
+  child: Column(
+    children: [
+      GestureDetector(
+        onTap: _showImagePicker,
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[50],
+          ),
+          child: _selectedImage != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _selectedImage!,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: _showImagePicker,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey[50],
-                        ),
-                        child: _selectedImagePath != null
-                            ? (_selectedImagePath!.contains('placeholder') 
-                                ? Icon(Icons.image, size: 35, color: Colors.grey[600])
-                                : Icon(Icons.image, size: 35, color: Colors.blue[600]))
-                            : Icon(Icons.add_photo_alternate_outlined, 
-                                   size: 35, color: Colors.grey[400]),
-                      ),
-                    ),
-                    SizedBox(height: 4),
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 40, color: Colors.grey[400]),
+                    const SizedBox(height: 4),
                     Text(
-                      'Product Image',
+                      'Add Image',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
-              ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Product Image',
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+    ],
+  ),
+),
+
               
               SizedBox(height: 16),
               

@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
 import 'dart:math';
+import 'dart:io';
 
 // Import the separate pages
 import 'product_page.dart';
 import 'sales_history_page.dart';
 import 'dashboard_page.dart';
+import 'product_list_page.dart';
+import 'notification_page.dart';
+import 'edit_profile_page.dart'; // Add this import
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -17,17 +25,35 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String selectedProduct = 'rice';
+  // News state
+bool isLoadingNews = false;
+int currentNewsIndex = 0;
+final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazonaws.com/dev/news"; 
+// 👆 Replace with your actual API endpoint
+
   String selectedPeriod = 'daily';
   String newsHeader =
-      'Market Update: Agricultural commodity prices show stability across Southeast Asian markets';
+      "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.";
   Timer? newsTimer;
   int currentIndex = 0;
 
-  final List<String> newsItems = [
-    'Market Update: Agricultural commodity prices show stability across Southeast Asian markets',
-    'Breaking: Weather forecast indicates favorable conditions for rice production this quarter',
-    'Economic Report: Consumer demand for essential goods increases by 12% this month',
-    'Supply Chain Alert: Transportation costs expected to decrease following fuel price reduction',
+  // Profile data state
+  String userName = 'Unknown';
+  String userEmail = 'unknown@example.com';
+  String? userProfileImagePath;
+  String? userPhone;
+  String? userAddress;
+
+  List<String> newsItems = [
+    "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.",
+    "Higher production costs are likely to raise consumer prices for eggs and poultry.",
+    "Increased fuel costs will elevate expenses for feed, veterinary services, packaging, and distribution.",
+    "Food inflation and food insecurity may worsen, especially affecting small and medium-scale farmers.",
+    "Targeted subsidies for agricultural inputs like maize, soybeans, and veterinary products could help lower production costs and stabilize consumer prices.",
+    "Lack of an egg subsidy may reduce the affordability of eggs as a protein source for consumers.",
+    "Improved infrastructure investment could reduce reliance on expensive fuel and lower transportation costs for businesses.",
+    "Trade restrictions or higher costs could risk reduced domestic poultry production.",
+    "Failure to implement supportive policies may undermine national food security and consumer affordability.",
   ];
 
   final Map<String, Map<String, List<ChartData>>> forecastData = {
@@ -86,15 +112,78 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _fetchNewsData();
     _startNewsTimer();
   }
 
-  void _startNewsTimer() {
-    newsTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+  // Fetch news data from API
+  Future<void> _fetchNewsData() async {
+  setState(() => isLoadingNews = true);
+
+  try {
+    final response = await http.get(Uri.parse(newsApiUrl));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      List<String> fetchedNews = [];
+
+      for (var item in data) {
+        if (item['content'] != null &&
+            item['content']['is_relevant'] == true &&
+            item['content']['possible_impacts'] != null) {
+          List<dynamic> impacts = item['content']['possible_impacts'];
+          for (var impact in impacts) {
+            if (impact != null && impact.toString().trim().isNotEmpty) {
+              fetchedNews.add(impact.toString());
+            }
+          }
+        }
+      }
+
       setState(() {
-        newsHeader = newsItems[Random().nextInt(newsItems.length)];
+        newsItems = fetchedNews; // 👈 only possible_impacts go here
+        isLoadingNews = false;
       });
+    } else {
+      throw Exception("Failed to load news");
+    }
+  } catch (e) {
+    setState(() {
+      newsItems = ["Error loading news: $e"];
+      isLoadingNews = false;
     });
+  }
+}
+
+
+  void _setDefaultNews() {
+    setState(() {
+      newsItems = [
+        "Market conditions are being monitored for price stability.",
+        "Government policies may impact agricultural product prices.",
+        "Import and export regulations affect market dynamics.",
+        "Price control measures are being evaluated for essential items.",
+      ];
+      newsHeader = newsItems.first;
+      currentNewsIndex = 0;
+      isLoadingNews = false;
+    });
+  }
+
+  void _startNewsTimer() {
+    newsTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (newsItems.isNotEmpty) {
+        setState(() {
+          currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+          newsHeader = newsItems[currentNewsIndex];
+        });
+      }
+    });
+  }
+
+  // Refresh news data
+  Future<void> _refreshNews() async {
+    await _fetchNewsData();
   }
 
   @override
@@ -103,20 +192,231 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  // Navigate to edit profile page
+  Future<void> _navigateToEditProfile() async {
+    Navigator.pop(context); // Close drawer first
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfilePage(
+          currentName: userName,
+          currentEmail: userEmail,
+          currentPhone: userPhone,
+          currentAddress: userAddress,
+          currentProfileImagePath: userProfileImagePath,
+        ),
+      ),
+    );
+
+    // Update profile data if changes were saved
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        userName = result['name'] ?? userName;
+        userEmail = result['email'] ?? userEmail;
+        userPhone = result['phone'] ?? userPhone;
+        userAddress = result['address'] ?? userAddress;
+        userProfileImagePath = result['profileImagePath'];
+      });
+    }
+  }
+
+  // Build drawer for left side navigation
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          // Profile Header - Make it clickable
+          GestureDetector(
+            onTap: _navigateToEditProfile,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+              decoration: BoxDecoration(color: Colors.blue[600]),
+              child: Row(
+                children: [
+                  // Profile picture
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: _buildProfileImage(),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Profile info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          userEmail,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Edit icon to indicate it's clickable
+                  const Icon(Icons.edit, color: Colors.white70, size: 16),
+                ],
+              ),
+            ),
+          ),
+
+          // Menu items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 20),
+              children: [
+                _buildDrawerMenuItem(
+                  icon: Icons.inventory,
+                  title: 'Product List',
+                  subtitle: 'View all added products',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProductListPage(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 40),
+                _buildDrawerMenuItem(
+                  icon: Icons.settings,
+                  title: 'Settings',
+                  subtitle: 'App preferences',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Settings - Coming soon!'),
+                        backgroundColor: Colors.blue,
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerMenuItem(
+                  icon: Icons.help_outline,
+                  title: 'Help & Support',
+                  subtitle: 'Get help and support',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Help & Support - Coming soon!'),
+                        backgroundColor: Colors.blue,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    if (userProfileImagePath != null && userProfileImagePath!.isNotEmpty) {
+      // Show user's profile image
+      return Image.file(
+        File(userProfileImagePath!),
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          // If file doesn't exist, show placeholder
+          return _buildPlaceholderAvatar();
+        },
+      );
+    } else {
+      // Show placeholder
+      return _buildPlaceholderAvatar();
+    }
+  }
+
+  Widget _buildPlaceholderAvatar() {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Icon(Icons.person, size: 25, color: Colors.grey[400]),
+    );
+  }
+
+  Widget _buildDrawerMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.blue[600], size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: Colors.grey[400],
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 20),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _buildDrawer(), // Add drawer here
       appBar: AppBar(
         backgroundColor: Colors.blue[600],
         elevation: 4,
-        leading: IconButton(
-          onPressed: () {
-            print("Hamburger menu tapped");
-          },
-          icon: Icon(
-            Icons.menu,
-            color: Colors.white,
-            size: responsiveFont(context, 22, min: 18, max: 26),
+        leading: Builder(
+          builder: (context) => IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Icon(
+              Icons.menu,
+              color: Colors.white,
+              size: responsiveFont(context, 22, min: 18, max: 26),
+            ),
           ),
         ),
         title: Text(
@@ -132,7 +432,13 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             onPressed: () {
-              print("Notification tapped");
+              // Navigate to notification page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationPage(),
+                ),
+              );
             },
             icon: Stack(
               children: [
@@ -140,6 +446,31 @@ class _HomePageState extends State<HomePage> {
                   Icons.notifications_outlined,
                   color: Colors.white,
                   size: responsiveFont(context, 22, min: 18, max: 26),
+                ),
+                // Add notification badge
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                    child: const Text(
+                      '2',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -183,7 +514,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsHeader() {
-    return Container(
+  return GestureDetector(
+    onHorizontalDragEnd: (details) {
+      setState(() {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! < 0) {
+            // Swipe left → next news
+            currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+          } else if (details.primaryVelocity! > 0) {
+            // Swipe right → previous news
+            currentNewsIndex =
+                (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
+          }
+          newsHeader = newsItems[currentNewsIndex];
+        }
+      });
+    },
+    child: Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -215,23 +562,61 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              const Spacer(),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            newsHeader,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: responsiveFont(context, 13, min: 11, max: 16),
-              height: 1.3,
-            ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+          SizedBox(
+            height: responsiveFont(context, 13, min: 11, max: 16) * 1.4 * 3,
+            child: isLoadingNews
+                ? Center(
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  )
+                : Text(
+                    newsHeader,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: responsiveFont(context, 13, min: 11, max: 16),
+                      height: 1.3,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.justify,
+                  ),
           ),
+          const SizedBox(height: 6),
+          // 🔹 Dots indicator
+          if (newsItems.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(newsItems.length, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: currentNewsIndex == index ? 10 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: currentNewsIndex == index
+                        ? Colors.white
+                        : Colors.white.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   void _navigateToPage(int index) async {
     switch (index) {
@@ -407,7 +792,7 @@ class _HomePageState extends State<HomePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(           
+        Expanded(
           child: Text(
             '${selectedProduct.capitalize()} Demand Forecast',
             style: TextStyle(
@@ -550,7 +935,10 @@ class _HomePageState extends State<HomePage> {
       minX: 0,
       maxX: data.length - 1.0,
       minY: 0,
-      maxY: data.map((e) => e.forecast).reduce((a, b) => a > b ? a : b) * 1.2,
+      maxY: data
+          .map((e) => e.forecast)
+          .reduce((a, b) => a > b ? a : b)
+          .toDouble(),
       lineBarsData: [
         LineChartBarData(
           spots: data
@@ -558,11 +946,12 @@ class _HomePageState extends State<HomePage> {
               .entries
               .where((entry) => entry.value.actual != null)
               .map((entry) {
-            return FlSpot(
-              entry.key.toDouble(),
-              entry.value.actual!.toDouble(),
-            );
-          }).toList(),
+                return FlSpot(
+                  entry.key.toDouble(),
+                  entry.value.actual!.toDouble(),
+                );
+              })
+              .toList(),
           isCurved: true,
           color: Colors.green,
           barWidth: 3,
@@ -571,11 +960,11 @@ class _HomePageState extends State<HomePage> {
             show: true,
             getDotPainter: (spot, percent, barData, index) =>
                 FlDotCirclePainter(
-              radius: 4,
-              color: Colors.green,
-              strokeWidth: 2,
-              strokeColor: Colors.white,
-            ),
+                  radius: 4,
+                  color: Colors.green,
+                  strokeWidth: 2,
+                  strokeColor: Colors.white,
+                ),
           ),
           belowBarData: BarAreaData(show: false),
         ),
@@ -595,11 +984,11 @@ class _HomePageState extends State<HomePage> {
             show: true,
             getDotPainter: (spot, percent, barData, index) =>
                 FlDotCirclePainter(
-              radius: 4,
-              color: Colors.blue,
-              strokeWidth: 2,
-              strokeColor: Colors.white,
-            ),
+                  radius: 4,
+                  color: Colors.blue,
+                  strokeWidth: 2,
+                  strokeColor: Colors.white,
+                ),
           ),
           belowBarData: BarAreaData(show: false),
         ),
@@ -607,8 +996,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  double responsiveFont(BuildContext context, double size,
-      {double min = 10, double max = 18}) {
+  double responsiveFont(
+    BuildContext context,
+    double size, {
+    double min = 10,
+    double max = 18,
+  }) {
     double screenWidth = MediaQuery.of(context).size.width;
     double scaled = size * (screenWidth / 375);
     return scaled.clamp(min, max);
