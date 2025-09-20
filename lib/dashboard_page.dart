@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'product_detail_page.dart';
-import 'product_data.dart'; 
+import 'product_data.dart';
+// Import the new utility classes
+import 'utils/stock_analyzer.dart';
+import 'utils/ui_utils.dart';
+import 'models/enums.dart';
+import 'sample_products.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -15,74 +20,35 @@ class _DashboardPageState extends State<DashboardPage> {
   String selectedSort = 'Sort';
 
   final List<String> riskLevels = ['Risk Level', 'Low', 'Medium', 'High'];
-  final List<String> sortOptions = ['Sort', 'Name A-Z', 'Name Z-A', 'Risk Level'];
-
-  // Sample product data
-  List<ProductData> allProducts = [
-    ProductData(
-      name: 'Rice',
-      forecast: 'RM200k (50k units)',
-      currentStock: '50 units',
-      daysWithoutStock: '3 days',
-      recommendation: 'Consider 29 weeks',
-      stockStatus: 'Low Stock',
-    ),
-    ProductData(
-      name: 'Egg',
-      forecast: 'Stock increase 35 kg',
-      currentStock: '120 units',
-      daysWithoutStock: '15 days',
-      recommendation: 'Stock level optimal',
-      stockStatus: 'Overstock',
-    ),
+  final List<String> sortOptions = [
+    'Sort',
+    'Name A-Z',
+    'Name Z-A',
+    'Risk Level',
   ];
 
-  // --- Risk calculation helpers ---
-  String getRiskLevel(String? daysWithoutStock) {
-    if (daysWithoutStock == null || daysWithoutStock.isEmpty) return 'Low';
+  // Sample product data
 
-    final match = RegExp(r'(\d+)').firstMatch(daysWithoutStock);
-    if (match == null) return 'Low';
+  List<ProductData> allProducts = sampleProducts;
 
-    int days = int.parse(match.group(1)!);
-
-    if (days < 5) return 'High';
-    if (days <= 30) return 'Medium';
-    return 'Low';
-  }
-
-  Color getRiskColor(String riskLevel) {
-    switch (riskLevel) {
-      case 'High':
-        return Colors.red;
-      case 'Medium':
-        return Colors.orange;
-      case 'Low':
-      default:
-        return Colors.green;
-    }
-  }
-
+  // --- Simplified using StockAnalyzer ---
   String get stockRiskSummary {
-    int high = allProducts.where((p) => getRiskLevel(p.daysWithoutStock) == 'High').length;
-    int medium = allProducts.where((p) => getRiskLevel(p.daysWithoutStock) == 'Medium').length;
-    int low = allProducts.where((p) => getRiskLevel(p.daysWithoutStock) == 'Low').length;
-
-    return '$high High\n$medium Medium\n$low Low';
+    List<String?> daysList = allProducts
+        .map((p) => p.daysWithoutStock)
+        .toList();
+    Map<RiskLevel, int> summary = StockAnalyzer.generateRiskSummary(daysList);
+    return StockAnalyzer.formatRiskSummary(summary);
   }
 
   List<String> get topSellingProducts {
     List<Map<String, dynamic>> productsWithUnits = allProducts.map((p) {
-      final match = RegExp(r'(\d+)')
-          .firstMatch(p.forecast.replaceAll(RegExp(r'[^0-9]'), ''));
-      int units = 0;
-      if (match != null) {
-        units = int.tryParse(match.group(1)!) ?? 0;
-      }
+      int units = StockAnalyzer.extractUnitsFromForecast(p.forecast);
       return {"name": p.name, "units": units};
     }).toList();
 
-    productsWithUnits.sort((a, b) => (b["units"] as int).compareTo(a["units"] as int));
+    productsWithUnits.sort(
+      (a, b) => (b["units"] as int).compareTo(a["units"] as int),
+    );
 
     return productsWithUnits.take(3).map((e) => e["name"] as String).toList();
   }
@@ -93,7 +59,7 @@ class _DashboardPageState extends State<DashboardPage> {
       if (i < topSellingProducts.length) {
         list.add("${i + 1}. ${topSellingProducts[i]}");
       } else {
-        list.add("${i + 1}. –"); // placeholder
+        list.add("${i + 1}. —"); // placeholder
       }
     }
     return list.join("\n");
@@ -102,10 +68,16 @@ class _DashboardPageState extends State<DashboardPage> {
   List<ProductData> get filteredProducts {
     List<ProductData> filtered = List.from(allProducts);
 
-    // Filter by risk level
+    // Filter by risk level using StockAnalyzer
     if (selectedRiskLevel != 'Risk Level') {
       filtered = filtered
-          .where((product) => getRiskLevel(product.daysWithoutStock) == selectedRiskLevel)
+          .where(
+            (product) =>
+                StockAnalyzer.calculateRiskLevel(
+                  product.daysWithoutStock,
+                ).toString() ==
+                selectedRiskLevel,
+          )
           .toList();
     }
 
@@ -117,8 +89,13 @@ class _DashboardPageState extends State<DashboardPage> {
     } else if (selectedSort == 'Risk Level') {
       const riskOrder = {'High': 0, 'Medium': 1, 'Low': 2};
       filtered.sort((a, b) {
-        return (riskOrder[getRiskLevel(a.daysWithoutStock)] ?? 3)
-            .compareTo(riskOrder[getRiskLevel(b.daysWithoutStock)] ?? 3);
+        String aRisk = StockAnalyzer.calculateRiskLevel(
+          a.daysWithoutStock,
+        ).toString();
+        String bRisk = StockAnalyzer.calculateRiskLevel(
+          b.daysWithoutStock,
+        ).toString();
+        return (riskOrder[aRisk] ?? 3).compareTo(riskOrder[bRisk] ?? 3);
       });
     }
 
@@ -133,15 +110,12 @@ class _DashboardPageState extends State<DashboardPage> {
         elevation: 4,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
-        title: const Text(
+        title: Text(
           'Dashboard',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: UIUtils.getResponsiveFontSize(context, 20),
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -149,7 +123,7 @@ class _DashboardPageState extends State<DashboardPage> {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: UIUtils.getResponsivePadding(context),
         child: Column(
           children: [
             _buildMetricsCards(),
@@ -164,61 +138,60 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildMetricsCards() {
-  return Column(
-    children: [
-      // First row: Total Forecast Sale & Forecasted Quantity
-      Row(
-        children: [
-          Expanded(
-            child: _buildMetricCard(
-              title: 'Total Forecast Sale',
-              value: 'RM 450,200',
-              subtitle: '+7.2% vs last month',
-              color: Colors.blue,
-              icon: Icons.trending_up,
+    return Column(
+      children: [
+        // First row: Total Forecast Sale & Forecasted Quantity
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Total Forecast Sale',
+                value: 'RM 450,200',
+                subtitle: '+7.2% vs last month',
+                color: Colors.blue,
+                icon: Icons.trending_up,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildMetricCard(
-              title: 'Forecasted Quantity',
-              value: '125k units',
-              subtitle: '+9.1% vs last month',
-              color: Colors.green,
-              icon: Icons.inventory,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Forecasted Quantity',
+                value: '125k units',
+                subtitle: '+9.1% vs last month',
+                color: Colors.green,
+                icon: Icons.inventory,
+              ),
             ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      // Second row: Stock Risk & Top Selling Product
-      Row(
-        children: [
-          Expanded(
-            child: _buildMetricCard(
-              title: 'Stock Risk',
-              value: stockRiskSummary,
-              subtitle: '',
-              color: Colors.orange,
-              icon: Icons.warning_amber,
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Second row: Stock Risk & Top Selling Product
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Stock Risk',
+                value: stockRiskSummary,
+                subtitle: '',
+                color: Colors.orange,
+                icon: Icons.warning_amber,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildMetricCard(
-              title: 'Top Selling Product',
-              value: topSellingSummary,
-              subtitle: '',
-              color: Colors.purple,
-              icon: Icons.star,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Top Selling Product',
+                value: topSellingSummary,
+                subtitle: '',
+                color: Colors.purple,
+                icon: Icons.star,
+              ),
             ),
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _buildMetricCard({
     required String title,
@@ -229,33 +202,29 @@ class _DashboardPageState extends State<DashboardPage> {
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double screenWidth = MediaQuery.of(context).size.width;
-
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: UIUtils.getResponsivePadding(context),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            borderRadius: UIUtils.getCardBorderRadius(),
+            boxShadow: UIUtils.getCardShadow(),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(icon, color: color, size: screenWidth * 0.04),
+                  Icon(
+                    icon,
+                    color: color,
+                    size: UIUtils.getResponsiveFontSize(context, 18),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: screenWidth * 0.025, // smaller & responsive
+                        fontSize: UIUtils.getResponsiveFontSize(context, 13),
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
@@ -268,7 +237,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: screenWidth * 0.04,
+                  fontSize: UIUtils.getResponsiveFontSize(context, 16),
                   fontWeight: FontWeight.bold,
                   color: Colors.grey[800],
                 ),
@@ -278,7 +247,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    fontSize: screenWidth * 0.028,
+                    fontSize: UIUtils.getResponsiveFontSize(context, 12),
                     color: Colors.green[600],
                     fontWeight: FontWeight.w500,
                   ),
@@ -323,7 +292,7 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: UIUtils.getCardBorderRadius(),
         color: Colors.white,
       ),
       child: DropdownButton<String>(
@@ -331,7 +300,7 @@ class _DashboardPageState extends State<DashboardPage> {
         isExpanded: true,
         underline: Container(),
         style: TextStyle(
-          fontSize: 13,
+          fontSize: UIUtils.getResponsiveFontSize(context, 13),
           color: Colors.grey[800],
         ),
         items: items.map((String item) {
@@ -355,21 +324,15 @@ class _DashboardPageState extends State<DashboardPage> {
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: UIUtils.getCardBorderRadius(),
+          boxShadow: UIUtils.getCardShadow(),
         ),
         child: Center(
           child: Text(
             'No products match the selected filters',
             style: TextStyle(
               color: Colors.grey[600],
-              fontSize: 16,
+              fontSize: UIUtils.getResponsiveFontSize(context, 16),
             ),
           ),
         ),
@@ -379,22 +342,19 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
       ),
       child: Column(
         children: products.asMap().entries.map((entry) {
           int index = entry.key;
           ProductData product = entry.value;
 
-          String riskLevel = getRiskLevel(product.daysWithoutStock);
-          Color riskColor = getRiskColor(riskLevel);
+          // Use StockAnalyzer for analysis
+          StockAnalysisResult analysis = StockAnalyzer.analyzeStock(
+            product.daysWithoutStock,
+            product.forecast,
+          );
 
           return Column(
             children: [
@@ -404,8 +364,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 currentStock: product.currentStock,
                 daysWithoutStock: product.daysWithoutStock,
                 recommendation: product.recommendation,
-                status: riskLevel,
-                statusColor: riskColor,
+                status: analysis.riskLevelString,
+                statusColor: analysis.riskColor,
               ),
               if (index < products.length - 1) const Divider(height: 1),
             ],
@@ -424,10 +384,8 @@ class _DashboardPageState extends State<DashboardPage> {
     required String status,
     required Color statusColor,
   }) {
-    double screenWidth = MediaQuery.of(context).size.width;
-
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: UIUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -437,7 +395,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Text(
                 name,
                 style: TextStyle(
-                  fontSize: screenWidth * 0.05, // responsive & smaller
+                  fontSize: UIUtils.getResponsiveFontSize(context, 18),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -451,7 +409,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Text(
                   status,
                   style: TextStyle(
-                    fontSize: screenWidth * 0.035,
+                    fontSize: UIUtils.getResponsiveFontSize(context, 12),
                     color: statusColor,
                     fontWeight: FontWeight.w500,
                   ),
@@ -463,7 +421,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Text(
             'Forecast: $forecast',
             style: TextStyle(
-              fontSize: screenWidth * 0.032,
+              fontSize: UIUtils.getResponsiveFontSize(context, 14),
               color: Colors.grey[700],
             ),
           ),
@@ -472,7 +430,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Text(
               'Current Stock: $currentStock',
               style: TextStyle(
-                fontSize: screenWidth * 0.032,
+                fontSize: UIUtils.getResponsiveFontSize(context, 14),
                 color: Colors.grey[700],
               ),
             ),
@@ -482,7 +440,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Text(
               'Days until without Stock: $daysWithoutStock',
               style: TextStyle(
-                fontSize: screenWidth * 0.032,
+                fontSize: UIUtils.getResponsiveFontSize(context, 14),
                 color: Colors.grey[700],
               ),
             ),
@@ -493,7 +451,7 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 Icon(
                   Icons.lightbulb_outline,
-                  size: screenWidth * 0.035,
+                  size: UIUtils.getResponsiveFontSize(context, 16),
                   color: Colors.orange[600],
                 ),
                 const SizedBox(width: 4),
@@ -501,7 +459,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: Text(
                     recommendation,
                     style: TextStyle(
-                      fontSize: screenWidth * 0.032,
+                      fontSize: UIUtils.getResponsiveFontSize(context, 14),
                       color: Colors.orange[600],
                       fontStyle: FontStyle.italic,
                     ),
@@ -515,32 +473,36 @@ class _DashboardPageState extends State<DashboardPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-  // Find the product data to pass to detail page
-  ProductData productToPass = ProductData(
-    name: name,
-    forecast: forecast,
-    currentStock: currentStock,
-    daysWithoutStock: daysWithoutStock,
-    recommendation: recommendation,
-    stockStatus: status,
-  );
-  
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProductDetailPage(product: productToPass),
-    ),
-  );
-},
+                // Find the product data to pass to detail page
+                ProductData productToPass = ProductData(
+                  name: name,
+                  forecast: forecast,
+                  currentStock: currentStock,
+                  daysWithoutStock: daysWithoutStock,
+                  recommendation: recommendation,
+                  stockStatus: status,
+                );
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ProductDetailPage(product: productToPass),
+                  ),
+                );
+              },
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
                 'View Details',
                 style: TextStyle(
-                  fontSize: screenWidth * 0.032,
+                  fontSize: UIUtils.getResponsiveFontSize(context, 14),
                   color: Colors.blue[600],
                   decoration: TextDecoration.underline,
                 ),
