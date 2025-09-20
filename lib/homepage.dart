@@ -18,7 +18,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String selectedProduct = 'rice';
   String selectedPeriod = 'daily';
-  String newsHeader = 'Market Update: Agricultural commodity prices show stability across Southeast Asian markets';
+  String newsHeader =
+      'Market Update: Agricultural commodity prices show stability across Southeast Asian markets';
   Timer? newsTimer;
   int currentIndex = 0;
 
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
     'Market Update: Agricultural commodity prices show stability across Southeast Asian markets',
     'Breaking: Weather forecast indicates favorable conditions for rice production this quarter',
     'Economic Report: Consumer demand for essential goods increases by 12% this month',
-    'Supply Chain Alert: Transportation costs expected to decrease following fuel price reduction'
+    'Supply Chain Alert: Transportation costs expected to decrease following fuel price reduction',
   ];
 
   final Map<String, Map<String, List<ChartData>>> forecastData = {
@@ -110,18 +111,18 @@ class _HomePageState extends State<HomePage> {
         elevation: 4,
         leading: IconButton(
           onPressed: () {
-            // Handle hamburger menu tap
             print("Hamburger menu tapped");
           },
           icon: Icon(
             Icons.menu,
             color: Colors.white,
+            size: responsiveFont(context, 22, min: 18, max: 26),
           ),
         ),
         title: Text(
           'Trendo',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: responsiveFont(context, 24, min: 18, max: 28),
             fontWeight: FontWeight.bold,
             color: Colors.white,
             letterSpacing: 0.5,
@@ -131,7 +132,6 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             onPressed: () {
-              // Handle notification tap
               print("Notification tapped");
             },
             icon: Stack(
@@ -139,6 +139,7 @@ class _HomePageState extends State<HomePage> {
                 Icon(
                   Icons.notifications_outlined,
                   color: Colors.white,
+                  size: responsiveFont(context, 22, min: 18, max: 26),
                 ),
               ],
             ),
@@ -147,11 +148,8 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          const SizedBox(height: 8), // Space between app bar and news
           _buildNewsHeader(),
-          Expanded(
-            child: _buildCurrentPage(),
-          ),
+          Expanded(child: _buildCurrentPage()),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -166,10 +164,7 @@ class _HomePageState extends State<HomePage> {
           _navigateToPage(index);
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag_outlined),
             label: 'Add Product',
@@ -187,12 +182,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-
   Widget _buildNewsHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.grey[600],
         boxShadow: [
@@ -208,26 +201,32 @@ class _HomePageState extends State<HomePage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.trending_up,
+                color: Colors.white,
+                size: responsiveFont(context, 16, min: 14, max: 18),
+              ),
+              const SizedBox(width: 6),
               Text(
                 'Live Market News',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: responsiveFont(context, 14, min: 12, max: 18),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             newsHeader,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 13,
-              height: 1.4,
+              fontSize: responsiveFont(context, 13, min: 11, max: 16),
+              height: 1.3,
             ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -237,40 +236,28 @@ class _HomePageState extends State<HomePage> {
   void _navigateToPage(int index) async {
     switch (index) {
       case 0:
-        // Already on home page, just ensure currentIndex is 0
-        setState(() {
-          currentIndex = 0;
-        });
+        setState(() => currentIndex = 0);
         break;
       case 1:
-        final result = await Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ProductPage()),
         );
-        // Reset to home tab when returning from product page
-        setState(() {
-          currentIndex = 0;
-        });
+        setState(() => currentIndex = 0);
         break;
       case 2:
-        final result = await Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => SalesHistoryPage()),
         );
-        // Reset to home tab when returning from sales history page
-        setState(() {
-          currentIndex = 0;
-        });
+        setState(() => currentIndex = 0);
         break;
       case 3:
-        final result = await Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => DashboardPage()),
         );
-        // Reset to home tab when returning from dashboard page
-        setState(() {
-          currentIndex = 0;
-        });
+        setState(() => currentIndex = 0);
         break;
     }
   }
@@ -280,13 +267,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHomeTab() {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           _buildProductSelection(),
-          const SizedBox(height: 24),
-          _buildForecastChart(),
+          const SizedBox(height: 16),
+          Expanded(child: _buildForecastChart()),
         ],
       ),
     );
@@ -313,7 +300,7 @@ class _HomePageState extends State<HomePage> {
           Text(
             'Select Product',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: responsiveFont(context, 18, min: 14, max: 20),
               fontWeight: FontWeight.w600,
               color: Colors.grey[800],
             ),
@@ -347,7 +334,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductButton(IconData icon, String label, bool isSelected, VoidCallback onTap, Color color) {
+  Widget _buildProductButton(
+    IconData icon,
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+    Color color,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -365,7 +358,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Icon(
               icon,
-              size: 32,
+              size: responsiveFont(context, 32, min: 24, max: 36),
               color: isSelected ? color : Colors.grey[600],
             ),
             const SizedBox(height: 8),
@@ -373,6 +366,7 @@ class _HomePageState extends State<HomePage> {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
+                fontSize: responsiveFont(context, 14, min: 12, max: 16),
                 color: isSelected ? color : Colors.grey[600],
               ),
             ),
@@ -400,12 +394,9 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _buildChartHeader(),
-          const SizedBox(height: 20),
-          Container(
-            height: 250,
-            child: LineChart(_createLineChartData()),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Expanded(child: LineChart(_createLineChartData())),
+          const SizedBox(height: 8),
           _buildChartLegend(),
         ],
       ),
@@ -416,17 +407,24 @@ class _HomePageState extends State<HomePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          '${selectedProduct.capitalize()} Demand Forecast',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[800],
+        Expanded(           
+          child: Text(
+            '${selectedProduct.capitalize()} Demand Forecast',
+            style: TextStyle(
+              fontSize: responsiveFont(context, 15, min: 12, max: 18),
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         Row(
           children: [
-            Icon(Icons.calendar_today, size: 16, color: Colors.grey[500]),
+            Icon(
+              Icons.calendar_today,
+              size: responsiveFont(context, 14, min: 12, max: 16),
+              color: Colors.grey[500],
+            ),
             const SizedBox(width: 4),
             DropdownButton<String>(
               value: selectedPeriod,
@@ -441,6 +439,10 @@ class _HomePageState extends State<HomePage> {
                   selectedPeriod = value!;
                 });
               },
+              style: TextStyle(
+                fontSize: responsiveFont(context, 14, min: 12, max: 16),
+                color: Colors.grey[800],
+              ),
             ),
           ],
         ),
@@ -449,11 +451,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildChartLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 24,
+      runSpacing: 8,
       children: [
         _buildLegendItem(Colors.green, 'Actual Demand'),
-        const SizedBox(width: 24),
         _buildLegendItem(Colors.blue, 'Forecasted Demand'),
       ],
     );
@@ -475,7 +478,7 @@ class _HomePageState extends State<HomePage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: responsiveFont(context, 12, min: 10, max: 14),
             color: Colors.grey[600],
           ),
         ),
@@ -485,21 +488,17 @@ class _HomePageState extends State<HomePage> {
 
   LineChartData _createLineChartData() {
     List<ChartData> data = forecastData[selectedProduct]![selectedPeriod]!;
-    
+
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: true,
         horizontalInterval: 50,
         verticalInterval: 1,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey[300]!,
-          strokeWidth: 1,
-        ),
-        getDrawingVerticalLine: (value) => FlLine(
-          color: Colors.grey[300]!,
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey[300]!, strokeWidth: 1),
+        getDrawingVerticalLine: (value) =>
+            FlLine(color: Colors.grey[300]!, strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         show: true,
@@ -515,7 +514,7 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: responsiveFont(context, 10, min: 9, max: 13),
                   ),
                 );
               }
@@ -532,7 +531,7 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: responsiveFont(context, 12, min: 10, max: 14),
                 ),
               );
             },
@@ -540,7 +539,9 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
       ),
       borderData: FlBorderData(
         show: true,
@@ -551,10 +552,16 @@ class _HomePageState extends State<HomePage> {
       minY: 0,
       maxY: data.map((e) => e.forecast).reduce((a, b) => a > b ? a : b) * 1.2,
       lineBarsData: [
-        // Actual demand line
         LineChartBarData(
-          spots: data.asMap().entries.where((entry) => entry.value.actual != null).map((entry) {
-            return FlSpot(entry.key.toDouble(), entry.value.actual!.toDouble());
+          spots: data
+              .asMap()
+              .entries
+              .where((entry) => entry.value.actual != null)
+              .map((entry) {
+            return FlSpot(
+              entry.key.toDouble(),
+              entry.value.actual!.toDouble(),
+            );
           }).toList(),
           isCurved: true,
           color: Colors.green,
@@ -562,7 +569,8 @@ class _HomePageState extends State<HomePage> {
           isStrokeCapRound: true,
           dotData: FlDotData(
             show: true,
-            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
               radius: 4,
               color: Colors.green,
               strokeWidth: 2,
@@ -571,10 +579,12 @@ class _HomePageState extends State<HomePage> {
           ),
           belowBarData: BarAreaData(show: false),
         ),
-        // Forecasted demand line
         LineChartBarData(
           spots: data.asMap().entries.map((entry) {
-            return FlSpot(entry.key.toDouble(), entry.value.forecast.toDouble());
+            return FlSpot(
+              entry.key.toDouble(),
+              entry.value.forecast.toDouble(),
+            );
           }).toList(),
           isCurved: true,
           color: Colors.blue,
@@ -583,7 +593,8 @@ class _HomePageState extends State<HomePage> {
           dashArray: [5, 5],
           dotData: FlDotData(
             show: true,
-            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
               radius: 4,
               color: Colors.blue,
               strokeWidth: 2,
@@ -595,6 +606,13 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
+
+  double responsiveFont(BuildContext context, double size,
+      {double min = 10, double max = 18}) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double scaled = size * (screenWidth / 375);
+    return scaled.clamp(min, max);
+  }
 }
 
 class ChartData {
@@ -602,11 +620,11 @@ class ChartData {
   final double forecast;
   final double? actual;
 
-  ChartData(this.period, this.forecast, this.actual);
+  ChartData(this.period, this.forecast, [this.actual]);
 }
 
-extension StringExtension on String {
+extension StringCasingExtension on String {
   String capitalize() {
-    return "${this[0].toUpperCase()}${this.substring(1).toLowerCase()}";
+    return '${this[0].toUpperCase()}${substring(1)}';
   }
 }
