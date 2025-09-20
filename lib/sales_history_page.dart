@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'dashboard_page.dart';
 
 class SalesHistoryPage extends StatefulWidget {
   @override
@@ -11,9 +12,11 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
   File? _selectedFile;
   String? _fileName;
   bool _isUploading = false;
+  bool _isUploaded = false;
 
-  Future<void> _pickFile() async {
+  Future<void> _pickAndUploadFile() async {
     try {
+      // First, pick the file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'xls', 'csv'],
@@ -23,62 +26,43 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         setState(() {
           _selectedFile = File(result.files.single.path!);
           _fileName = result.files.single.name;
+          _isUploading = true;
         });
         
-        // Show success message
+        // Show file selected message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('File selected: $_fileName'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 1),
+          ),
+        );
+
+        // Simulate file upload process
+        await Future.delayed(Duration(seconds: 2));
+        
+        // Here you would implement actual file upload logic
+        // For now, we'll just show success message
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('File uploaded successfully!'),
             backgroundColor: Colors.green,
           ),
         );
+
+        setState(() {
+          _isUploading = false;
+          _isUploaded = true;
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error picking file: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );
-    }
-  }
-
-  Future<void> _uploadFile() async {
-    if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select a file first'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isUploading = true;
-    });
-
-    try {
-      // Simulate file upload process
-      await Future.delayed(Duration(seconds: 2));
-      
-      // Here you would implement actual file upload logic
-      // For now, we'll just show success message
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('File uploaded successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Upload failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
       setState(() {
         _isUploading = false;
       });
@@ -86,12 +70,10 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
   }
 
   void _generateForecast() {
-    // TODO: Implement AI model integration for forecasting
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Forecast generation will be implemented with AI model'),
-        backgroundColor: Colors.blue,
-      ),
+    // Navigate to dashboard page
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DashboardPage()),
     );
   }
 
@@ -122,7 +104,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Upload your sales data to generate AI-powered forecasts and analytics',
+                      'Upload your sales history data to generate AI-powered forecasts and analytics',
                       style: TextStyle(
                         color: Colors.blue[800],
                         fontWeight: FontWeight.w500,
@@ -147,97 +129,73 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
               child: Column(
                 children: [
                   Icon(
-                    Icons.cloud_upload_outlined,
+                    _isUploaded ? Icons.check_circle : Icons.cloud_upload_outlined,
                     size: 48,
-                    color: Colors.grey[600],
+                    color: _isUploaded ? Colors.green[600] : Colors.grey[600],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Upload Excel or CSV File',
+                    _isUploaded ? 'File Uploaded Successfully' : 'Upload Excel or CSV File',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
+                      color: _isUploaded ? Colors.green[700] : Colors.grey[700],
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Supported formats: .xlsx, .xls, .csv',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                  if (!_isUploaded)
+                    Text(
+                      'Supported formats: .xlsx, .xls, .csv',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 16),
                   
-                  // Upload buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _pickFile,
-                        icon: Icon(Icons.folder_open),
-                        label: Text('Select File'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        ),
+                  // Upload button (only show if not uploaded)
+                  if (!_isUploaded)
+                    ElevatedButton.icon(
+                      onPressed: _isUploading ? null : _pickAndUploadFile,
+                      icon: _isUploading 
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(Icons.upload),
+                      label: Text(_isUploading ? 'Uploading...' : 'Upload File'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: _isUploading ? null : _uploadFile,
-                        icon: _isUploading 
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(Icons.upload),
-                        label: Text(_isUploading ? 'Uploading...' : 'Upload'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
 
-                  const SizedBox(height: 16),
-
-                  // Selected file display
-                  if (_fileName != null)
+                  // Uploaded file display
+                  if (_isUploaded && _fileName != null)
                     Container(
                       padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: Colors.green[50],
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue[200]!),
+                        border: Border.all(color: Colors.green[200]!),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.insert_drive_file, color: Colors.blue[600]),
+                          Icon(Icons.insert_drive_file, color: Colors.green[600]),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _fileName!,
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                color: Colors.blue[800],
+                                color: Colors.green[800],
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedFile = null;
-                                _fileName = null;
-                              });
-                            },
-                            icon: Icon(Icons.close, color: Colors.grey[600]),
-                          ),
+                          Icon(Icons.check_circle, color: Colors.green[600]),
                         ],
                       ),
                     ),
