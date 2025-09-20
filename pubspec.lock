@@ -580,10 +580,10 @@ packages:
     dependency: transitive
     description:
       name: oauth2
-      sha256: c84470642cbb2bec450ccab2f8520c079cd1ca546a76ffd5c40589e07f4e8bf4
+      sha256: c4013ef62be37744efdc0861878fd9e9285f34db1f9e331cc34100d7674feb42
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.3"
+    version: "2.0.2"
   os_detect:
     dependency: transitive
     description:
@@ -805,14 +805,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.0"
-  sqlite3:
-    dependency: transitive
-    description:
-      name: sqlite3
-      sha256: f393d92c71bdcc118d6203d07c991b9be0f84b1a6f89dd4f7eed348131329924
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.9.0"
   sqflite:
     dependency: "direct main"
     description:
@@ -853,6 +845,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.0"
+  sqlite3:
+    dependency: transitive
+    description:
+      name: sqlite3
+      sha256: f393d92c71bdcc118d6203d07c991b9be0f84b1a6f89dd4f7eed348131329924
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.0"
   stack_trace:
     dependency: transitive
     description:
@@ -925,14 +925,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
-  uuid:
-    dependency: transitive
-    description:
-      name: uuid
-      sha256: a5be9ef6618a7ac1e964353ef476418026db906c4facdedaa299b7a2e71690ff
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.5.1"
   url_launcher:
     dependency: "direct main"
     description:
@@ -997,6 +989,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.4"
+  uuid:
+    dependency: transitive
+    description:
+      name: uuid
+      sha256: a5be9ef6618a7ac1e964353ef476418026db906c4facdedaa299b7a2e71690ff
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.5.1"
   vector_math:
     dependency: transitive
     description:
