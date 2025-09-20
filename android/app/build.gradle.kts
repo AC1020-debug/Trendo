@@ -45,7 +45,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.trendo" // Replace with your actual app ID
-        minSdk = 21
+        minSdk = 24
         targetSdk = 34
         versionCode = flutterVersionCodeInt
         versionName = flutterVersionNameStr
