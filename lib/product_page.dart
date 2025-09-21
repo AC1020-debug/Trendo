@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'product_list_page.dart';
 
 class ProductPage extends StatefulWidget {
   @override
@@ -32,67 +33,67 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   void _showImagePicker() {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) => Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Select Product Image',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildImagePickerOption(
-                icon: Icons.camera_alt,
-                label: 'Camera',
-                onTap: () {
-                  Navigator.pop(context);
-                  _takePhoto();
-                },
-              ),
-              _buildImagePickerOption(
-                icon: Icons.photo_library,
-                label: 'Gallery',
-                onTap: () {
-                  Navigator.pop(context);
-                  _selectFromGallery();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    ),
-  );
-}
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Select Product Image',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildImagePickerOption(
+                  icon: Icons.camera_alt,
+                  label: 'Camera',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _takePhoto();
+                  },
+                ),
+                _buildImagePickerOption(
+                  icon: Icons.photo_library,
+                  label: 'Gallery',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _selectFromGallery();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-Widget _buildImagePickerOption({
+  Widget _buildImagePickerOption({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -144,14 +145,6 @@ Widget _buildImagePickerOption({
         SnackBar(content: Text('Image selected from gallery')),
       );
     }
-    
-    // Placeholder for now:
-    setState(() {
-      _selectedImagePath = 'gallery_image.jpg';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Image selection placeholder (add image_picker package)')),
-    );
   }
 
   void _takePhoto() async {
@@ -176,6 +169,7 @@ Widget _buildImagePickerOption({
         ),
       );
       
+      // Clear the form
       _formKey.currentState!.reset();
       _productNameController.clear();
       _skuController.clear();
@@ -185,8 +179,116 @@ Widget _buildImagePickerOption({
       _reorderPointController.clear();
       setState(() {
         _selectedImagePath = null;
+        _selectedImage = null;
       });
+      
+      // Navigate to Product List Page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ProductListPage()),
+      );
     }
+  }
+
+  Widget _buildProductImageField() {
+    return FormField<File>(
+      validator: (value) {
+        if (_selectedImage == null) {
+          return 'Please select a product image';
+        }
+        return null;
+      },
+      builder: (FormFieldState<File> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: GestureDetector(
+                onTap: _showImagePicker,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: state.hasError ? Colors.red : Colors.grey[300]!,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[50],
+                  ),
+                  child: _selectedImage != null
+                      ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                _selectedImage!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.edit,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 32,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Add Image',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                            
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text(
+                    state.errorText!,
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -203,79 +305,34 @@ Widget _buildImagePickerOption({
           key: _formKey,
           child: Column(
             children: [
-              // Image Upload (center top)
-              // Product Image Upload
-Center(
-  child: Column(
-    children: [
-      GestureDetector(
-        onTap: _showImagePicker,
-        child: Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.grey[50],
-          ),
-          child: _selectedImage != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _selectedImage!,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_photo_alternate_outlined,
-                        size: 40, color: Colors.grey[400]),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Add Image',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        'Product Image',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-      ),
-    ],
-  ),
-),
-
-              
-              SizedBox(height: 16),
-              
-              // Product Name (full width)
-              TextFormField(
-                controller: _productNameController,
-                decoration: InputDecoration(
-                  labelText: 'Product Name',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.shopping_bag),
-                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter product name';
-                  }
-                  return null;
-                },
-              ),
-              
-              SizedBox(height: 12),
-              
-              // All fields arranged vertically
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // Product Image Field
+                      _buildProductImageField(),
+                      
+                      SizedBox(height: 16),
+                      
+                      // Product Name
+                      TextFormField(
+                        controller: _productNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Product Name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.shopping_bag),
+                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter product name';
+                          }
+                          return null;
+                        },
+                      ),
+                      
+                      SizedBox(height: 12),
+                      
                       // SKU/Product Code
                       TextFormField(
                         controller: _skuController,
