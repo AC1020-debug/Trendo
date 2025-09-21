@@ -14,6 +14,12 @@ const amplifyconfig = '''{
             "Region": "ap-southeast-1"
           }
         },
+        "CognitoIdentityPool": {
+          "Default": {
+            "PoolId": "ap-southeast-1:029c352c-812b-44e2-9894-6a40ee41a16d",
+            "Region": "ap-southeast-1"
+          }
+        },
         "Auth": {
           "Default": {
             "authenticationFlowType": "USER_SRP_AUTH",
@@ -28,6 +34,15 @@ const amplifyconfig = '''{
             "verificationMechanisms": ["EMAIL"]
           }
         }
+      }
+    }
+  },
+  "storage": {
+    "plugins": {
+      "awsS3StoragePlugin": {
+        "bucket": "trendo-retailer-csv",
+        "region": "ap-southeast-1",
+        "defaultAccessLevel": "guest"
       }
     }
   }

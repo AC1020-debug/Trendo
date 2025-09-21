@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dashboard_page.dart';
 
@@ -11,12 +13,12 @@ class SalesHistoryPage extends StatefulWidget {
 class _SalesHistoryPageState extends State<SalesHistoryPage> {
   File? _selectedFile;
   String? _fileName;
+  String? _s3Key;
   bool _isUploading = false;
   bool _isUploaded = false;
 
   Future<void> _pickAndUploadFile() async {
     try {
-      // First, pick the file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'xls', 'csv'],
@@ -29,7 +31,6 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
           _isUploading = true;
         });
         
-        // Show file selected message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('File selected: $_fileName'),
@@ -38,23 +39,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
           ),
         );
 
-        // Simulate file upload process
-        await Future.delayed(Duration(seconds: 2));
-        
-        // Here you would implement actual file upload logic
-        // For now, we'll just show success message
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('File uploaded successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        setState(() {
-          _isUploading = false;
-          _isUploaded = true;
-        });
+        await _uploadUsingPresignedUrl();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,11 +54,79 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
     }
   }
 
+  Future<void> _uploadUsingPresignedUrl() async {
+    try {
+      if (_selectedFile == null || _fileName == null) {
+        return;
+      }
+      setState(() {
+        _isUploading = true;
+      });
+
+      // Read file and convert to base64
+      final bytes = await _selectedFile!.readAsBytes();
+      final base64File = base64Encode(bytes);
+
+      // 1. Request presigned URL with file content
+      final presignResponse = await http.post(
+        Uri.parse('https://w2qsl11vr9.execute-api.ap-southeast-1.amazonaws.com/dev'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'file': base64File,
+          'filename': _fileName,
+        }),
+      );
+
+      // Debug: Print response details
+      print('Response Status: ${presignResponse.statusCode}');
+      print('Response Headers: ${presignResponse.headers}');
+      print('Response Body: ${presignResponse.body}');
+
+      if (presignResponse.statusCode != 200) {
+        throw Exception('Failed to get presigned URL: ${presignResponse.body}');
+      }
+
+      final presignData = jsonDecode(presignResponse.body);
+      print('Parsed Data: $presignData');
+      print('Available Keys: ${presignData.keys}');
+      
+      // If we reach here, the upload was successful
+      setState(() {
+        _isUploading = false;
+        _isUploaded = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('File uploaded successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+    } catch (e) {
+      print('Upload error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() {
+        _isUploading = false;
+        _isUploaded = false;  // Reset upload status on error
+      });
+    }
+  }
+
   void _generateForecast() {
-    // Navigate to dashboard page
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => DashboardPage()),
+      MaterialPageRoute(
+        builder: (context) => DashboardPage(),
+      ),
     );
   }
 
@@ -90,7 +143,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             // Instructions
+            // Instructions
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -153,7 +206,6 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                     ),
                   const SizedBox(height: 16),
                   
-                  // Upload button (only show if not uploaded)
                   if (!_isUploaded)
                     ElevatedButton.icon(
                       onPressed: _isUploading ? null : _pickAndUploadFile,
@@ -173,7 +225,6 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                       ),
                     ),
 
-                  // Uploaded file display
                   if (_isUploaded && _fileName != null)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -205,7 +256,6 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
             
             const Spacer(),
             
-            // Forecast Button
             Container(
               width: double.infinity,
               height: 56,
