@@ -5,6 +5,7 @@ import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'amplifyconfig.dart';
 import 'homepage.dart';
 import 'auth/auth_wrapper.dart';
+import 'widget/draggable_chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +39,13 @@ class TrendoApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
+      home: Stack(
+        children: [
+          const AuthWrapper(),   // all your app’s navigation
+          const DraggableChatbot(), // global FAB
+        ],
+      ),
     );
   }
 }

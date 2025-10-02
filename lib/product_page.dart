@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'product_list_page.dart';
+import 'widget/draggable_chatbot.dart';
 
 class ProductPage extends StatefulWidget {
   @override
@@ -16,7 +17,7 @@ class _ProductPageState extends State<ProductPage> {
   final _costPriceController = TextEditingController();
   final _stockQuantityController = TextEditingController();
   final _reorderPointController = TextEditingController();
-  
+
   String? _selectedImagePath;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -54,10 +55,7 @@ class _ProductPageState extends State<ProductPage> {
             const SizedBox(height: 20),
             const Text(
               'Select Product Image',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             Row(
@@ -109,16 +107,9 @@ class _ProductPageState extends State<ProductPage> {
             decoration: BoxDecoration(
               color: (color ?? Colors.blue[600])?.withOpacity(0.1),
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: color ?? Colors.blue[600]!,
-                width: 1,
-              ),
+              border: Border.all(color: color ?? Colors.blue[600]!, width: 1),
             ),
-            child: Icon(
-              icon,
-              size: 30,
-              color: color ?? Colors.blue[600],
-            ),
+            child: Icon(icon, size: 30, color: color ?? Colors.blue[600]),
           ),
           const SizedBox(height: 8),
           Text(
@@ -141,9 +132,9 @@ class _ProductPageState extends State<ProductPage> {
         _selectedImage = File(image.path);
         _selectedImagePath = image.path;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image selected from gallery')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Image selected from gallery')));
     }
   }
 
@@ -154,9 +145,9 @@ class _ProductPageState extends State<ProductPage> {
         _selectedImage = File(image.path);
         _selectedImagePath = image.path;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Photo captured from camera')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Photo captured from camera')));
     }
   }
 
@@ -168,7 +159,7 @@ class _ProductPageState extends State<ProductPage> {
           backgroundColor: Colors.green,
         ),
       );
-      
+
       // Clear the form
       _formKey.currentState!.reset();
       _productNameController.clear();
@@ -181,7 +172,7 @@ class _ProductPageState extends State<ProductPage> {
         _selectedImagePath = null;
         _selectedImage = null;
       });
-      
+
       // Navigate to Product List Page
       Navigator.pushReplacement(
         context,
@@ -263,10 +254,7 @@ class _ProductPageState extends State<ProductPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                            
-                            ),
+                            Row(mainAxisAlignment: MainAxisAlignment.center),
                           ],
                         ),
                 ),
@@ -278,10 +266,7 @@ class _ProductPageState extends State<ProductPage> {
                 child: Center(
                   child: Text(
                     state.errorText!,
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 ),
               ),
@@ -293,190 +278,217 @@ class _ProductPageState extends State<ProductPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Add Product'),
-        backgroundColor: Colors.blue[600],
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(12.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Product Image Field
-                      _buildProductImageField(),
-                      
-                      SizedBox(height: 16),
-                      
-                      // Product Name
-                      TextFormField(
-                        controller: _productNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Product Name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.shopping_bag),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter product name';
-                          }
-                          return null;
-                        },
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text('Add Product'),
+            backgroundColor: Colors.blue[600],
+            foregroundColor: Colors.white,
+          ),
+          body: Padding(
+            padding: EdgeInsets.all(12.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Product Image Field
+                          _buildProductImageField(),
+
+                          SizedBox(height: 16),
+
+                          // Product Name
+                          TextFormField(
+                            controller: _productNameController,
+                            decoration: InputDecoration(
+                              labelText: 'Product Name',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.shopping_bag),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter product name';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // SKU/Product Code
+                          TextFormField(
+                            controller: _skuController,
+                            decoration: InputDecoration(
+                              labelText: 'SKU/Product Code',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.qr_code),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter SKU/Product Code';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // Selling Price
+                          TextFormField(
+                            controller: _sellingPriceController,
+                            keyboardType: TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Selling Price',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.attach_money),
+                              prefixText: '\$ ',
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter selling price';
+                              }
+                              if (double.tryParse(value) == null) {
+                                return 'Please enter a valid price';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // Cost Price
+                          TextFormField(
+                            controller: _costPriceController,
+                            keyboardType: TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Cost Price',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.money_off),
+                              prefixText: '\$ ',
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter cost price';
+                              }
+                              if (double.tryParse(value) == null) {
+                                return 'Please enter a valid price';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // Current Stock Quantity
+                          TextFormField(
+                            controller: _stockQuantityController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Current Stock Quantity',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.inventory),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter stock quantity';
+                              }
+                              if (int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // Reorder Point
+                          TextFormField(
+                            controller: _reorderPointController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Reorder Point',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.warning_amber),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter reorder point';
+                              }
+                              if (int.tryParse(value) == null) {
+                                return 'Please enter a valid number';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                       ),
-                      
-                      SizedBox(height: 12),
-                      
-                      // SKU/Product Code
-                      TextFormField(
-                        controller: _skuController,
-                        decoration: InputDecoration(
-                          labelText: 'SKU/Product Code',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.qr_code),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter SKU/Product Code';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      SizedBox(height: 12),
-                      
-                      // Selling Price
-                      TextFormField(
-                        controller: _sellingPriceController,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'Selling Price',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.attach_money),
-                          prefixText: '\$ ',
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter selling price';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid price';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      SizedBox(height: 12),
-                      
-                      // Cost Price
-                      TextFormField(
-                        controller: _costPriceController,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'Cost Price',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.money_off),
-                          prefixText: '\$ ',
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter cost price';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid price';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      SizedBox(height: 12),
-                      
-                      // Current Stock Quantity
-                      TextFormField(
-                        controller: _stockQuantityController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Current Stock Quantity',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.inventory),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter stock quantity';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      SizedBox(height: 12),
-                      
-                      // Reorder Point
-                      TextFormField(
-                        controller: _reorderPointController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Reorder Point',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.warning_amber),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter reorder point';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              SizedBox(height: 16),
-              
-              // Add Product Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _addProduct,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 2,
                   ),
-                  child: Text(
-                    'Add Product',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+
+                  SizedBox(height: 16),
+
+                  // Add Product Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _addProduct,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        'Add Product',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        DraggableChatbot(),
+      ],
     );
   }
 }

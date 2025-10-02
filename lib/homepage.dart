@@ -14,6 +14,7 @@ import 'edit_profile_page.dart'; // Add this import
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import 'widget/draggable_chatbot.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -403,115 +404,120 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: _buildDrawer(), // Add drawer here
-      appBar: AppBar(
-        backgroundColor: Colors.blue[600],
-        elevation: 4,
-        leading: Builder(
-          builder: (context) => IconButton(
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: Icon(
-              Icons.menu,
-              color: Colors.white,
-              size: responsiveFont(context, 22, min: 18, max: 26),
+Widget build(BuildContext context) {
+  return Stack(
+    children: [
+      Scaffold(
+        drawer: _buildDrawer(), // Add drawer here
+        appBar: AppBar(
+          backgroundColor: Colors.blue[600],
+          elevation: 4,
+          leading: Builder(
+            builder: (context) => IconButton(
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: Icon(
+                Icons.menu,
+                color: Colors.white,
+                size: responsiveFont(context, 22, min: 18, max: 26),
+              ),
             ),
           ),
-        ),
-        title: Text(
-          'Trendo',
-          style: TextStyle(
-            fontSize: responsiveFont(context, 24, min: 18, max: 28),
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 0.5,
+          title: Text(
+            'Trendo',
+            style: TextStyle(
+              fontSize: responsiveFont(context, 24, min: 18, max: 28),
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () {
-              // Navigate to notification page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationPage(),
-                ),
-              );
-            },
-            icon: Stack(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: responsiveFont(context, 22, min: 18, max: 26),
-                ),
-                // Add notification badge
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(1),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 12,
-                      minHeight: 12,
-                    ),
-                    child: const Text(
-                      '2',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
+          centerTitle: true,
+          actions: [
+            IconButton(
+              onPressed: () {
+                // Navigate to notification page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationPage(),
+                  ),
+                );
+              },
+              icon: Stack(
+                children: [
+                  Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                    size: responsiveFont(context, 22, min: 18, max: 26),
+                  ),
+                  // Add notification badge
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 12,
+                        minHeight: 12,
+                      ),
+                      child: const Text(
+                        '2',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            _buildNewsHeader(),
+            Expanded(child: _buildCurrentPage()),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: currentIndex,
+          selectedItemColor: Colors.blue[600],
+          unselectedItemColor: Colors.grey[500],
+          onTap: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+            _navigateToPage(index);
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_bag_outlined),
+              label: 'Add Product',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.upload_file),
+              label: 'Sales Data',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+          ],
+        ),
       ),
-      body: Column(
-        children: [
-          _buildNewsHeader(),
-          Expanded(child: _buildCurrentPage()),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: currentIndex,
-        selectedItemColor: Colors.blue[600],
-        unselectedItemColor: Colors.grey[500],
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-          _navigateToPage(index);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag_outlined),
-            label: 'Add Product',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.upload_file),
-            label: 'Sales Data',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-        ],
-      ),
-    );
-  }
+      // DraggableChatbot(), // Add this line
+    ],
+  );
+}
 
   Widget _buildNewsHeader() {
   return GestureDetector(

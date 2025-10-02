@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'widget/draggable_chatbot.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({Key? key}) : super(key: key);
@@ -23,7 +24,8 @@ class _NotificationPageState extends State<NotificationPage> {
     NotificationItem(
       id: '2',
       title: 'Forecast Update',
-      message: 'New demand forecast available for Egg. Expected increase of 15%.',
+      message:
+          'New demand forecast available for Egg. Expected increase of 15%.',
       type: NotificationType.info,
       isRead: false,
       timestamp: DateTime.now().subtract(Duration(hours: 5)),
@@ -33,7 +35,8 @@ class _NotificationPageState extends State<NotificationPage> {
     NotificationItem(
       id: '3',
       title: 'Stock Replenishment Reminder',
-      message: 'Consider reordering Rice within the next 2 days to avoid stockout.',
+      message:
+          'Consider reordering Rice within the next 2 days to avoid stockout.',
       type: NotificationType.reminder,
       isRead: true,
       timestamp: DateTime.now().subtract(Duration(days: 1)),
@@ -43,7 +46,8 @@ class _NotificationPageState extends State<NotificationPage> {
     NotificationItem(
       id: '4',
       title: 'High Demand Alert',
-      message: 'Egg demand is expected to peak this weekend. Current stock: 120 units.',
+      message:
+          'Egg demand is expected to peak this weekend. Current stock: 120 units.',
       type: NotificationType.success,
       isRead: true,
       timestamp: DateTime.now().subtract(Duration(days: 2)),
@@ -69,9 +73,13 @@ class _NotificationPageState extends State<NotificationPage> {
       case 'Unread':
         return notifications.where((n) => !n.isRead).toList();
       case 'Warnings':
-        return notifications.where((n) => n.type == NotificationType.warning).toList();
+        return notifications
+            .where((n) => n.type == NotificationType.warning)
+            .toList();
       case 'Updates':
-        return notifications.where((n) => n.type == NotificationType.info).toList();
+        return notifications
+            .where((n) => n.type == NotificationType.info)
+            .toList();
       default:
         return notifications;
     }
@@ -81,58 +89,62 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue[600],
-        elevation: 4,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
-        ),
-        title: const Text(
-          'Notifications',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: false,
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: Text(
-                'Mark all read',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.blue[600],
+            elevation: 4,
+            leading: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+            title: const Text(
+              'Notifications',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildFilterSection(),
-          _buildNotificationStats(),
-          Expanded(
-            child: filteredNotifications.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredNotifications.length,
-                    itemBuilder: (context, index) {
-                      return _buildNotificationCard(filteredNotifications[index]);
-                    },
+            centerTitle: false,
+            actions: [
+              if (unreadCount > 0)
+                TextButton(
+                  onPressed: _markAllAsRead,
+                  child: Text(
+                    'Mark all read',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                ),
+            ],
           ),
-        ],
-      ),
+          body: Column(
+            children: [
+              _buildFilterSection(),
+              _buildNotificationStats(),
+              Expanded(
+                child: filteredNotifications.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredNotifications.length,
+                        itemBuilder: (context, index) {
+                          return _buildNotificationCard(
+                            filteredNotifications[index],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+        DraggableChatbot(),
+      ],
     );
   }
 
@@ -172,7 +184,9 @@ class _NotificationPageState extends State<NotificationPage> {
                       checkmarkColor: Colors.blue[600],
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.blue[600] : Colors.grey[700],
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   );
@@ -226,14 +240,10 @@ class _NotificationPageState extends State<NotificationPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_none,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.notifications_none, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            selectedFilter == 'All' 
+            selectedFilter == 'All'
                 ? 'No notifications yet'
                 : 'No ${selectedFilter.toLowerCase()} notifications',
             style: TextStyle(
@@ -245,10 +255,7 @@ class _NotificationPageState extends State<NotificationPage> {
           const SizedBox(height: 8),
           Text(
             'You\'ll be notified about important updates here',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -257,7 +264,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   Widget _buildNotificationCard(NotificationItem notification) {
     Color typeColor = _getNotificationColor(notification.type);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -291,14 +298,10 @@ class _NotificationPageState extends State<NotificationPage> {
                   color: typeColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  notification.icon,
-                  color: typeColor,
-                  size: 20,
-                ),
+                child: Icon(notification.icon, color: typeColor, size: 20),
               ),
               const SizedBox(width: 12),
-              
+
               // Notification content
               Expanded(
                 child: Column(
@@ -371,15 +374,11 @@ class _NotificationPageState extends State<NotificationPage> {
                   ],
                 ),
               ),
-              
+
               // Action button
               IconButton(
                 onPressed: () => _showNotificationOptions(notification),
-                icon: Icon(
-                  Icons.more_vert,
-                  color: Colors.grey[400],
-                  size: 18,
-                ),
+                icon: Icon(Icons.more_vert, color: Colors.grey[400], size: 18),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -474,7 +473,10 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
               if (!notification.isRead)
                 ListTile(
-                  leading: const Icon(Icons.mark_email_read, color: Colors.blue),
+                  leading: const Icon(
+                    Icons.mark_email_read,
+                    color: Colors.blue,
+                  ),
                   title: const Text('Mark as Read'),
                   onTap: () {
                     Navigator.pop(context);
@@ -520,13 +522,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 }
 
-enum NotificationType {
-  info,
-  warning,
-  error,
-  success,
-  reminder,
-}
+enum NotificationType { info, warning, error, success, reminder }
 
 class NotificationItem {
   final String id;

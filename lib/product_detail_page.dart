@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../utils/stock_analyzer.dart' as stock;
 import '../utils/ui_utils.dart' as ui;
 import '../models/enums.dart';
+import 'widget/draggable_chatbot.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final ProductData product;
@@ -32,7 +33,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         data.add({
           'period': dayLabel,
           'units': (10 + i * 2),
-          'status': i < 2 ? 'warning' : i < 4 ? 'critical' : 'normal',
+          'status': i < 2
+              ? 'warning'
+              : i < 4
+              ? 'critical'
+              : 'normal',
         });
       }
     } else if (timeframe == 'Weekly') {
@@ -45,7 +50,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         data.add({
           'period': label,
           'units': (30 - i * 5),
-          'status': i == 3 ? 'critical' : i == 1 ? 'warning' : 'normal',
+          'status': i == 3
+              ? 'critical'
+              : i == 1
+              ? 'warning'
+              : 'normal',
         });
       }
     } else if (timeframe == 'Monthly') {
@@ -64,50 +73,52 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue[600],
-        elevation: 4,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.blue[600],
+            elevation: 4,
+            leading: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+            title: Text(
+              widget.product.name,
+              style: TextStyle(
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 20),
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            centerTitle: false,
+          ),
+          body: SingleChildScrollView(
+            padding: ui.UIUtils.getResponsivePadding(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatusCard(context),
+                const SizedBox(height: 20),
+                _buildTimeframeSelector(context),
+                const SizedBox(height: 16),
+                _buildForecastCard(context),
+                const SizedBox(height: 20),
+                _buildCriticalInfoCard(context),
+              ],
+            ),
           ),
         ),
-        title: Text(
-          widget.product.name,
-          style: TextStyle(
-            fontSize: ui.UIUtils.getResponsiveFontSize(context, 20),
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
-        padding: ui.UIUtils.getResponsivePadding(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusCard(context),
-            const SizedBox(height: 20),
-            _buildTimeframeSelector(context),
-            const SizedBox(height: 16),
-            _buildForecastCard(context),
-            const SizedBox(height: 20),
-            _buildCriticalInfoCard(context),
-          ],
-        ),
-      ),
+        DraggableChatbot(),
+      ],
     );
   }
 
   Widget _buildStatusCard(BuildContext context) {
     // Use StockAnalyzer for comprehensive analysis
     stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
-      widget.product.daysWithoutStock, 
-      widget.product.forecast
+      widget.product.daysWithoutStock,
+      widget.product.forecast,
     );
 
     return Container(
@@ -131,10 +142,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           ),
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: analysis.riskColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
@@ -147,8 +155,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   analysis.riskLevel == RiskLevel.high
                       ? Icons.error
                       : analysis.riskLevel == RiskLevel.medium
-                          ? Icons.warning
-                          : Icons.check_circle,
+                      ? Icons.warning
+                      : Icons.check_circle,
                   color: analysis.riskColor,
                   size: ui.UIUtils.getResponsiveFontSize(context, 16),
                 ),
@@ -212,7 +220,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 border: Border.all(
                   color: isSelected ? Colors.blue[600]! : Colors.grey[300]!,
                 ),
-                boxShadow: isSelected ? ui.UIUtils.getCardShadow(opacity: 0.2) : [],
+                boxShadow: isSelected
+                    ? ui.UIUtils.getCardShadow(opacity: 0.2)
+                    : [],
               ),
               child: Text(
                 timeframe,
@@ -247,8 +257,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             selectedTimeframe == 'Daily'
                 ? 'Next 7 Days Forecast'
                 : selectedTimeframe == 'Weekly'
-                    ? 'Next 4 Weeks Forecast'
-                    : 'Next 4 Months Forecast',
+                ? 'Next 4 Weeks Forecast'
+                : 'Next 4 Months Forecast',
             style: TextStyle(
               fontSize: ui.UIUtils.getResponsiveFontSize(context, 18),
               fontWeight: FontWeight.bold,
@@ -256,41 +266,51 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
           const SizedBox(height: 16),
-          ...data.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      item['period'],
-                      style: TextStyle(
-                        fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
-                        color: Colors.grey[700],
+          ...data
+              .map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          item['period'],
+                          style: TextStyle(
+                            fontSize: ui.UIUtils.getResponsiveFontSize(
+                              context,
+                              14,
+                            ),
+                            color: Colors.grey[700],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      '${item['units']} units',
-                      style: TextStyle(
-                        fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[800],
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '${item['units']} units',
+                          style: TextStyle(
+                            fontSize: ui.UIUtils.getResponsiveFontSize(
+                              context,
+                              14,
+                            ),
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[800],
+                          ),
+                        ),
                       ),
-                    ),
+                      Icon(
+                        stock.StockAnalyzer.getStatusIcon(item['status']),
+                        color: stock.StockAnalyzer.getStatusColor(
+                          item['status'],
+                        ),
+                        size: ui.UIUtils.getResponsiveFontSize(context, 20),
+                      ),
+                    ],
                   ),
-                  Icon(
-                    stock.StockAnalyzer.getStatusIcon(item['status']),
-                    color: stock.StockAnalyzer.getStatusColor(item['status']),
-                    size: ui.UIUtils.getResponsiveFontSize(context, 20),
-                  ),
-                ],
-              ),
-            ),
-          ).toList(),
+                ),
+              )
+              .toList(),
         ],
       ),
     );
@@ -299,14 +319,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Widget _buildCriticalInfoCard(BuildContext context) {
     // Use StockAnalyzer to determine risk level
     stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
-      widget.product.daysWithoutStock, 
-      widget.product.forecast
+      widget.product.daysWithoutStock,
+      widget.product.forecast,
     );
 
     // Show if there's a recommendation OR if it's critical
-    bool hasRecommendation = widget.product.recommendation != null && 
-                           widget.product.recommendation!.isNotEmpty;
-    
+    bool hasRecommendation =
+        widget.product.recommendation != null &&
+        widget.product.recommendation!.isNotEmpty;
+
     if (!hasRecommendation && !analysis.isCritical) return const SizedBox();
 
     return Container(
@@ -315,8 +336,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         color: analysis.isCritical ? Colors.orange[50] : Colors.blue[50],
         borderRadius: ui.UIUtils.getCardBorderRadius(),
         border: Border.all(
-          color: analysis.isCritical ? Colors.orange[200]! : Colors.blue[200]!, 
-          width: 1
+          color: analysis.isCritical ? Colors.orange[200]! : Colors.blue[200]!,
+          width: 1,
         ),
       ),
       child: Column(
@@ -325,20 +346,26 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           Row(
             children: [
               Icon(
-                analysis.isCritical ? Icons.warning_amber_rounded : Icons.info_outline,
-                color: analysis.isCritical ? Colors.orange[600] : Colors.blue[600],
+                analysis.isCritical
+                    ? Icons.warning_amber_rounded
+                    : Icons.info_outline,
+                color: analysis.isCritical
+                    ? Colors.orange[600]
+                    : Colors.blue[600],
                 size: ui.UIUtils.getResponsiveFontSize(context, 24),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  analysis.isCritical 
-                    ? 'Critical - Stockout Expected'
-                    : 'Recommendation',
+                  analysis.isCritical
+                      ? 'Critical - Stockout Expected'
+                      : 'Recommendation',
                   style: TextStyle(
                     fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
                     fontWeight: FontWeight.bold,
-                    color: analysis.isCritical ? Colors.orange[800] : Colors.blue[800],
+                    color: analysis.isCritical
+                        ? Colors.orange[800]
+                        : Colors.blue[800],
                   ),
                 ),
               ),
@@ -362,7 +389,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               children: [
                 Icon(
                   Icons.lightbulb_outline,
-                  color: analysis.isCritical ? Colors.orange[600] : Colors.blue[600],
+                  color: analysis.isCritical
+                      ? Colors.orange[600]
+                      : Colors.blue[600],
                   size: ui.UIUtils.getResponsiveFontSize(context, 20),
                 ),
                 const SizedBox(width: 8),
@@ -371,7 +400,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     widget.product.recommendation!,
                     style: TextStyle(
                       fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
-                      color: analysis.isCritical ? Colors.orange[700] : Colors.blue[700],
+                      color: analysis.isCritical
+                          ? Colors.orange[700]
+                          : Colors.blue[700],
                       fontStyle: FontStyle.italic,
                     ),
                   ),

@@ -7,6 +7,7 @@ import 'utils/stock_analyzer.dart';
 import 'utils/ui_utils.dart';
 import 'models/enums.dart';
 import 'sample_products.dart';
+import 'widget/draggable_chatbot.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -104,36 +105,41 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue[600],
-        elevation: 4,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-        ),
-        title: Text(
-          'Dashboard',
-          style: TextStyle(
-            fontSize: UIUtils.getResponsiveFontSize(context, 20),
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.blue[600],
+            elevation: 4,
+            leading: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+            title: Text(
+              'Dashboard',
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 20),
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            centerTitle: false,
+          ),
+          body: SingleChildScrollView(
+            padding: UIUtils.getResponsivePadding(context),
+            child: Column(
+              children: [
+                _buildMetricsCards(),
+                const SizedBox(height: 20),
+                _buildFilters(),
+                const SizedBox(height: 16),
+                _buildProductList(),
+              ],
+            ),
           ),
         ),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
-        padding: UIUtils.getResponsivePadding(context),
-        child: Column(
-          children: [
-            _buildMetricsCards(),
-            const SizedBox(height: 20),
-            _buildFilters(),
-            const SizedBox(height: 16),
-            _buildProductList(),
-          ],
-        ),
-      ),
+        DraggableChatbot(),
+      ],
     );
   }
 
