@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
-import 'dart:math';
 import 'dart:io';
 
 // Import the separate pages
@@ -10,30 +10,31 @@ import 'sales_history_page.dart';
 import 'dashboard_page.dart';
 import 'product_list_page.dart';
 import 'notification_page.dart';
-import 'edit_profile_page.dart'; // Add this import
+import 'edit_profile_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
-
+import 'services/news.dart';
+import 'utils/utils.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  String? _errorMessage = "";
+
   String selectedProduct = 'rice';
+
   // News state
-bool isLoadingNews = false;
-int currentNewsIndex = 0;
-final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazonaws.com/dev/news"; 
-// 👆 Replace with your actual API endpoint
+  bool isLoadingNews = true;
+  int currentNewsIndex = 0;
+
+  final String newsApiUrl = '${dotenv.env['NEWS_API_ENDPOINT']}/news';
 
   String selectedPeriod = 'daily';
-  String newsHeader =
-      "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.";
   Timer? newsTimer;
   int currentIndex = 0;
 
@@ -44,17 +45,7 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
   String? userPhone;
   String? userAddress;
 
-  List<String> newsItems = [
-    "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.",
-    "Higher production costs are likely to raise consumer prices for eggs and poultry.",
-    "Increased fuel costs will elevate expenses for feed, veterinary services, packaging, and distribution.",
-    "Food inflation and food insecurity may worsen, especially affecting small and medium-scale farmers.",
-    "Targeted subsidies for agricultural inputs like maize, soybeans, and veterinary products could help lower production costs and stabilize consumer prices.",
-    "Lack of an egg subsidy may reduce the affordability of eggs as a protein source for consumers.",
-    "Improved infrastructure investment could reduce reliance on expensive fuel and lower transportation costs for businesses.",
-    "Trade restrictions or higher costs could risk reduced domestic poultry production.",
-    "Failure to implement supportive policies may undermine national food security and consumer affordability.",
-  ];
+  List<News> newsItems = [];
 
   final Map<String, Map<String, List<ChartData>>> forecastData = {
     'rice': {
@@ -118,56 +109,51 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
 
   // Fetch news data from API
   Future<void> _fetchNewsData() async {
-  setState(() => isLoadingNews = true);
+    setState(() => isLoadingNews = true);
 
-  try {
-    final response = await http.get(Uri.parse(newsApiUrl));
+    try {
+      final response = await http.get(Uri.parse(newsApiUrl));
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      List<String> fetchedNews = [];
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        List<News> fetchedNews = [];
 
-      for (var item in data) {
-        if (item['content'] != null &&
-            item['content']['is_relevant'] == true &&
-            item['content']['possible_impacts'] != null) {
-          List<dynamic> impacts = item['content']['possible_impacts'];
-          for (var impact in impacts) {
-            if (impact != null && impact.toString().trim().isNotEmpty) {
-              fetchedNews.add(impact.toString());
-            }
+        for (var news in data) {
+          var content = news['content'];
+          if (content != null &&
+              content['is_relevant'] == true &&
+              content['possible_impacts'] != null &&
+              content['possible_impacts'].isNotEmpty) {
+            String url = content['url'] ?? 'No URL available';
+            String filteredContent =
+                content['filtered_content'] ?? 'No filtered content available';
+
+            // Convert dynamic list to Strings list
+            List<String> impacts =
+                (content['possible_impacts'] as List<dynamic>)
+                    .map((item) => item.toString())
+                    .toList();
+            String headline = content['headline'] ?? 'No headline available';
+
+            fetchedNews.add(News(url, filteredContent, impacts, headline));
           }
         }
+
+        setState(() {
+          newsItems = fetchedNews;
+        });
+      } else {
+        setState(() {
+          _errorMessage = "Error loading news: ${response.statusCode}";
+        });
       }
-
+    } catch (e) {
       setState(() {
-        newsItems = fetchedNews; // 👈 only possible_impacts go here
-        isLoadingNews = false;
+        _errorMessage = "Error loading news: $e";
       });
-    } else {
-      throw Exception("Failed to load news");
+    } finally {
+      isLoadingNews = false;
     }
-  } catch (e) {
-    setState(() {
-      newsItems = ["Error loading news: $e"];
-      isLoadingNews = false;
-    });
-  }
-}
-
-
-  void _setDefaultNews() {
-    setState(() {
-      newsItems = [
-        "Market conditions are being monitored for price stability.",
-        "Government policies may impact agricultural product prices.",
-        "Import and export regulations affect market dynamics.",
-        "Price control measures are being evaluated for essential items.",
-      ];
-      newsHeader = newsItems.first;
-      currentNewsIndex = 0;
-      isLoadingNews = false;
-    });
   }
 
   void _startNewsTimer() {
@@ -175,15 +161,9 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
       if (newsItems.isNotEmpty) {
         setState(() {
           currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-          newsHeader = newsItems[currentNewsIndex];
         });
       }
     });
-  }
-
-  // Refresh news data
-  Future<void> _refreshNews() async {
-    await _fetchNewsData();
   }
 
   @override
@@ -404,6 +384,14 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
 
   @override
   Widget build(BuildContext context) {
+    // Show error message snackbar
+    if (_errorMessage != null && _errorMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_errorMessage != null) {
+          showError(context, _errorMessage!);
+        }
+      });
+    }
     return Scaffold(
       drawer: _buildDrawer(), // Add drawer here
       appBar: AppBar(
@@ -514,6 +502,7 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
   }
 
   Widget _buildNewsHeader() {
+    // TODO: redirect users to news url on click
   return GestureDetector(
     onHorizontalDragEnd: (details) {
       setState(() {
@@ -526,7 +515,6 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
             currentNewsIndex =
                 (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
           }
-          newsHeader = newsItems[currentNewsIndex];
         }
       });
     },
@@ -580,7 +568,7 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
                     ),
                   )
                 : Text(
-                    newsHeader,
+                    newsItems[currentNewsIndex].headline,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: responsiveFont(context, 13, min: 11, max: 16),
