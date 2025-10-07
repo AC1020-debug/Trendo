@@ -9,7 +9,7 @@ class DraggableChatbot extends StatefulWidget {
 
 class _DraggableChatbotState extends State<DraggableChatbot> {
   static Offset? savedPosition; // persist across screens
-  late Offset position;
+  Offset? position; // Make it nullable
 
   @override
   void initState() {
@@ -31,9 +31,14 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
 
   @override
   Widget build(BuildContext context) {
+    // Return empty container until position is initialized
+    if (position == null) {
+      return const SizedBox.shrink();
+    }
+
     return Positioned(
-      left: position.dx,
-      top: position.dy,
+      left: position!.dx,
+      top: position!.dy,
       child: Draggable(
         feedback: _buildChatbotButton(isDragging: true),
         childWhenDragging: Container(),

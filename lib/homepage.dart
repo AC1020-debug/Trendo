@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
-import 'dart:math';
 import 'dart:io';
 
 // Import the separate pages
@@ -10,31 +10,31 @@ import 'sales_history_page.dart';
 import 'dashboard_page.dart';
 import 'product_list_page.dart';
 import 'notification_page.dart';
-import 'edit_profile_page.dart'; // Add this import
+import 'edit_profile_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
-import 'widget/draggable_chatbot.dart';
-
+import 'services/news.dart';
+import 'utils/utils.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  String? _errorMessage = "";
+
   String selectedProduct = 'rice';
+
   // News state
-bool isLoadingNews = false;
-int currentNewsIndex = 0;
-final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazonaws.com/dev/news"; 
-// 👆 Replace with your actual API endpoint
+  bool isLoadingNews = true;
+  int currentNewsIndex = 0;
+
+  final String newsApiUrl = '${dotenv.env['NEWS_API_ENDPOINT']}/news';
 
   String selectedPeriod = 'daily';
-  String newsHeader =
-      "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.";
   Timer? newsTimer;
   int currentIndex = 0;
 
@@ -45,17 +45,7 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
   String? userPhone;
   String? userAddress;
 
-  List<String> newsItems = [
-    "The proposed 5% tax on petroleum products will increase production costs for poultry businesses.",
-    "Higher production costs are likely to raise consumer prices for eggs and poultry.",
-    "Increased fuel costs will elevate expenses for feed, veterinary services, packaging, and distribution.",
-    "Food inflation and food insecurity may worsen, especially affecting small and medium-scale farmers.",
-    "Targeted subsidies for agricultural inputs like maize, soybeans, and veterinary products could help lower production costs and stabilize consumer prices.",
-    "Lack of an egg subsidy may reduce the affordability of eggs as a protein source for consumers.",
-    "Improved infrastructure investment could reduce reliance on expensive fuel and lower transportation costs for businesses.",
-    "Trade restrictions or higher costs could risk reduced domestic poultry production.",
-    "Failure to implement supportive policies may undermine national food security and consumer affordability.",
-  ];
+  List<News> newsItems = [];
 
   final Map<String, Map<String, List<ChartData>>> forecastData = {
     'rice': {
@@ -119,56 +109,51 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
 
   // Fetch news data from API
   Future<void> _fetchNewsData() async {
-  setState(() => isLoadingNews = true);
+    setState(() => isLoadingNews = true);
 
-  try {
-    final response = await http.get(Uri.parse(newsApiUrl));
+    try {
+      final response = await http.get(Uri.parse(newsApiUrl));
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      List<String> fetchedNews = [];
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        List<News> fetchedNews = [];
 
-      for (var item in data) {
-        if (item['content'] != null &&
-            item['content']['is_relevant'] == true &&
-            item['content']['possible_impacts'] != null) {
-          List<dynamic> impacts = item['content']['possible_impacts'];
-          for (var impact in impacts) {
-            if (impact != null && impact.toString().trim().isNotEmpty) {
-              fetchedNews.add(impact.toString());
-            }
+        for (var news in data) {
+          var content = news['content'];
+          if (content != null &&
+              content['is_relevant'] == true &&
+              content['possible_impacts'] != null &&
+              content['possible_impacts'].isNotEmpty) {
+            String url = content['url'] ?? 'No URL available';
+            String filteredContent =
+                content['filtered_content'] ?? 'No filtered content available';
+
+            // Convert dynamic list to Strings list
+            List<String> impacts =
+                (content['possible_impacts'] as List<dynamic>)
+                    .map((item) => item.toString())
+                    .toList();
+            String headline = content['headline'] ?? 'No headline available';
+
+            fetchedNews.add(News(url, filteredContent, impacts, headline));
           }
         }
+
+        setState(() {
+          newsItems = fetchedNews;
+        });
+      } else {
+        setState(() {
+          _errorMessage = "Error loading news: ${response.statusCode}";
+        });
       }
-
+    } catch (e) {
       setState(() {
-        newsItems = fetchedNews; // 👈 only possible_impacts go here
-        isLoadingNews = false;
+        _errorMessage = "Error loading news: $e";
       });
-    } else {
-      throw Exception("Failed to load news");
+    } finally {
+      isLoadingNews = false;
     }
-  } catch (e) {
-    setState(() {
-      newsItems = ["Error loading news: $e"];
-      isLoadingNews = false;
-    });
-  }
-}
-
-
-  void _setDefaultNews() {
-    setState(() {
-      newsItems = [
-        "Market conditions are being monitored for price stability.",
-        "Government policies may impact agricultural product prices.",
-        "Import and export regulations affect market dynamics.",
-        "Price control measures are being evaluated for essential items.",
-      ];
-      newsHeader = newsItems.first;
-      currentNewsIndex = 0;
-      isLoadingNews = false;
-    });
   }
 
   void _startNewsTimer() {
@@ -176,15 +161,9 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
       if (newsItems.isNotEmpty) {
         setState(() {
           currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-          newsHeader = newsItems[currentNewsIndex];
         });
       }
     });
-  }
-
-  // Refresh news data
-  Future<void> _refreshNews() async {
-    await _fetchNewsData();
   }
 
   @override
@@ -404,225 +383,234 @@ final String newsApiUrl = "https://vs8p5qqzwb.execute-api.ap-southeast-1.amazona
   }
 
   @override
-Widget build(BuildContext context) {
-  return Stack(
-    children: [
-      Scaffold(
-        drawer: _buildDrawer(), // Add drawer here
-        appBar: AppBar(
-          backgroundColor: Colors.blue[600],
-          elevation: 4,
-          leading: Builder(
-            builder: (context) => IconButton(
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: Icon(
-                Icons.menu,
-                color: Colors.white,
-                size: responsiveFont(context, 22, min: 18, max: 26),
-              ),
-            ),
-          ),
-          title: Text(
-            'Trendo',
-            style: TextStyle(
-              fontSize: responsiveFont(context, 24, min: 18, max: 28),
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              onPressed: () {
-                // Navigate to notification page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationPage(),
-                  ),
-                );
-              },
-              icon: Stack(
-                children: [
-                  Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: responsiveFont(context, 22, min: 18, max: 26),
-                  ),
-                  // Add notification badge
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 12,
-                        minHeight: 12,
-                      ),
-                      child: const Text(
-                        '2',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildNewsHeader(),
-            Expanded(child: _buildCurrentPage()),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: currentIndex,
-          selectedItemColor: Colors.blue[600],
-          unselectedItemColor: Colors.grey[500],
-          onTap: (index) {
-            setState(() {
-              currentIndex = index;
-            });
-            _navigateToPage(index);
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag_outlined),
-              label: 'Add Product',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.upload_file),
-              label: 'Sales Data',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard),
-              label: 'Dashboard',
-            ),
-          ],
-        ),
-      ),
-      // DraggableChatbot(), // Add this line
-    ],
-  );
-}
-
-  Widget _buildNewsHeader() {
-  return GestureDetector(
-    onHorizontalDragEnd: (details) {
-      setState(() {
-        if (details.primaryVelocity != null) {
-          if (details.primaryVelocity! < 0) {
-            // Swipe left → next news
-            currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-          } else if (details.primaryVelocity! > 0) {
-            // Swipe right → previous news
-            currentNewsIndex =
-                (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
-          }
-          newsHeader = newsItems[currentNewsIndex];
+  Widget build(BuildContext context) {
+    // Show error message snackbar
+    if (_errorMessage != null && _errorMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_errorMessage != null) {
+          showError(context, _errorMessage!);
         }
       });
-    },
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[600],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.trending_up,
-                color: Colors.white,
-                size: responsiveFont(context, 16, min: 14, max: 18),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Live Market News',
-                style: TextStyle(
+    }
+    return Stack(
+      children: [
+        Scaffold(
+          drawer: _buildDrawer(), // Add drawer here
+          appBar: AppBar(
+            backgroundColor: Colors.blue[600],
+            elevation: 4,
+            leading: Builder(
+              builder: (context) => IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: Icon(
+                  Icons.menu,
                   color: Colors.white,
-                  fontSize: responsiveFont(context, 14, min: 12, max: 18),
-                  fontWeight: FontWeight.w500,
+                  size: responsiveFont(context, 22, min: 18, max: 26),
                 ),
               ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: responsiveFont(context, 13, min: 11, max: 16) * 1.4 * 3,
-            child: isLoadingNews
-                ? Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+            title: Text(
+              'Trendo',
+              style: TextStyle(
+                fontSize: responsiveFont(context, 24, min: 18, max: 28),
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                onPressed: () {
+                  // Navigate to notification page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationPage(),
+                    ),
+                  );
+                },
+                icon: Stack(
+                  children: [
+                    Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                      size: responsiveFont(context, 22, min: 18, max: 26),
+                    ),
+                    // Add notification badge
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(1),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 12,
+                          minHeight: 12,
+                        ),
+                        child: const Text(
+                          '2',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
-                  )
-                : Text(
-                    newsHeader,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: responsiveFont(context, 13, min: 11, max: 16),
-                      height: 1.3,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.justify,
-                  ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          // 🔹 Dots indicator
-          if (newsItems.isNotEmpty)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(newsItems.length, (index) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: currentNewsIndex == index ? 10 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: currentNewsIndex == index
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-        ],
-      ),
-    ),
-  );
-}
+          body: Column(
+            children: [
+              _buildNewsHeader(),
+              Expanded(child: _buildCurrentPage()),
+            ],
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: currentIndex,
+            selectedItemColor: Colors.blue[600],
+            unselectedItemColor: Colors.grey[500],
+            onTap: (index) {
+              setState(() {
+                currentIndex = index;
+              });
+              _navigateToPage(index);
+            },
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_bag_outlined),
+                label: 'Add Product',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.upload_file),
+                label: 'Sales Data',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard),
+                label: 'Dashboard',
+              ),
+            ],
+          ),
+        ),
+        // DraggableChatbot(), // Add this line
+      ],
+    );
+  }
 
+  Widget _buildNewsHeader() {
+    // TODO: redirect users to news url on click
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        setState(() {
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! < 0) {
+              // Swipe left → next news
+              currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+            } else if (details.primaryVelocity! > 0) {
+              // Swipe right → previous news
+              currentNewsIndex =
+                  (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
+            }
+          }
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey[600],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.trending_up,
+                  color: Colors.white,
+                  size: responsiveFont(context, 16, min: 14, max: 18),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Live Market News',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: responsiveFont(context, 14, min: 12, max: 18),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: responsiveFont(context, 13, min: 11, max: 16) * 1.4 * 3,
+              child: isLoadingNews
+                  ? Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      newsItems[currentNewsIndex].headline,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: responsiveFont(context, 13, min: 11, max: 16),
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.justify,
+                    ),
+            ),
+            const SizedBox(height: 6),
+            // 🔹 Dots indicator
+            if (newsItems.isNotEmpty)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(newsItems.length, (index) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: currentNewsIndex == index ? 10 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: currentNewsIndex == index
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _navigateToPage(int index) async {
     switch (index) {
