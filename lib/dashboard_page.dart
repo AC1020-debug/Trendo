@@ -143,126 +143,674 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // Widget _buildMetricsCards() {
+  //   return Column(
+  //     children: [
+  //       // First row: Total Forecast Sale & Forecasted Quantity
+  //       Row(
+  //         children: [
+  //           Expanded(
+  //             child: _buildMetricCard(
+  //               title: 'Total Forecast Sale',
+  //               value: 'RM 450,200',
+  //               subtitle: '+7.2% vs last month',
+  //               color: Colors.blue,
+  //               icon: Icons.trending_up,
+  //             ),
+  //           ),
+  //           const SizedBox(width: 12),
+  //           Expanded(
+  //             child: _buildMetricCard(
+  //               title: 'Forecasted Quantity',
+  //               value: '125k units',
+  //               subtitle: '+9.1% vs last month',
+  //               color: Colors.green,
+  //               icon: Icons.inventory,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //       const SizedBox(height: 12),
+  //       // Second row: Stock Risk & Top Selling Product
+  //       Row(
+  //         children: [
+  //           Expanded(
+  //             child: _buildMetricCard(
+  //               title: 'Stock Risk',
+  //               value: stockRiskSummary,
+  //               subtitle: '',
+  //               color: Colors.orange,
+  //               icon: Icons.warning_amber,
+  //             ),
+  //           ),
+  //           const SizedBox(width: 12),
+  //           Expanded(
+  //             child: _buildMetricCard(
+  //               title: 'Top Selling Product',
+  //               value: topSellingSummary,
+  //               subtitle: '',
+  //               color: Colors.purple,
+  //               icon: Icons.star,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  // Widget _buildMetricCard({
+  //   required String title,
+  //   required String value,
+  //   required String subtitle,
+  //   required Color color,
+  //   required IconData icon,
+  // }) {
+  //   return LayoutBuilder(
+  //     builder: (context, constraints) {
+  //       return Container(
+  //         padding: UIUtils.getResponsivePadding(context),
+  //         decoration: BoxDecoration(
+  //           color: Colors.white,
+  //           borderRadius: UIUtils.getCardBorderRadius(),
+  //           boxShadow: UIUtils.getCardShadow(),
+  //         ),
+  //         child: Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             Row(
+  //               children: [
+  //                 Icon(
+  //                   icon,
+  //                   color: color,
+  //                   size: UIUtils.getResponsiveFontSize(context, 18),
+  //                 ),
+  //                 const SizedBox(width: 8),
+  //                 Expanded(
+  //                   child: Text(
+  //                     title,
+  //                     style: TextStyle(
+  //                       fontSize: UIUtils.getResponsiveFontSize(context, 13),
+  //                       color: Colors.grey[600],
+  //                       fontWeight: FontWeight.w500,
+  //                     ),
+  //                     overflow: TextOverflow.ellipsis,
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //             const SizedBox(height: 8),
+  //             Text(
+  //               value,
+  //               style: TextStyle(
+  //                 fontSize: UIUtils.getResponsiveFontSize(context, 16),
+  //                 fontWeight: FontWeight.bold,
+  //                 color: Colors.grey[800],
+  //               ),
+  //             ),
+  //             if (subtitle.isNotEmpty) ...[
+  //               const SizedBox(height: 4),
+  //               Text(
+  //                 subtitle,
+  //                 style: TextStyle(
+  //                   fontSize: UIUtils.getResponsiveFontSize(context, 12),
+  //                   color: Colors.green[600],
+  //                   fontWeight: FontWeight.w500,
+  //                 ),
+  //               ),
+  //             ],
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
   Widget _buildMetricsCards() {
     return Column(
       children: [
-        // First row: Total Forecast Sale & Forecasted Quantity
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Total Forecast Sale',
-                value: 'RM 450,200',
-                subtitle: '+7.2% vs last month',
-                color: Colors.blue,
-                icon: Icons.trending_up,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Forecasted Quantity',
-                value: '125k units',
-                subtitle: '+9.1% vs last month',
-                color: Colors.green,
-                icon: Icons.inventory,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Second row: Stock Risk & Top Selling Product
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Stock Risk',
-                value: stockRiskSummary,
-                subtitle: '',
-                color: Colors.orange,
-                icon: Icons.warning_amber,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Top Selling Product',
-                value: topSellingSummary,
-                subtitle: '',
-                color: Colors.purple,
-                icon: Icons.star,
-              ),
-            ),
-          ],
-        ),
+        _buildSalesTrendChart(),
+        const SizedBox(height: 16),
+        _buildWeekdayVsWeekendChart(),
+        const SizedBox(height: 16),
+        _buildPromoVsNonPromoChart(),
       ],
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required Color color,
-    required IconData icon,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          padding: UIUtils.getResponsivePadding(context),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: UIUtils.getCardBorderRadius(),
-            boxShadow: UIUtils.getCardShadow(),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSalesTrendChart() {
+    final List<FlSpot> spots = [
+      FlSpot(0, 3100), // Fri last week
+      FlSpot(1, 5200), // Sat last week
+      FlSpot(2, 5800), // Sun
+      FlSpot(3, 4000), // Mon
+      FlSpot(4, 3300), // Tue
+      FlSpot(5, 3400), // Wed (Today = Wed)
+      FlSpot(6, 3200), // Thu (Tomorrow forecast)
+    ];
+
+    // Today & Forecast
+    final today = spots[5].y;
+    final forecast = spots[6].y;
+
+    // Compare forecast vs today
+    final diffPct = ((forecast - today) / today) * 100;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    icon,
-                    color: color,
-                    size: UIUtils.getResponsiveFontSize(context, 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              Icon(Icons.trending_up, color: Colors.blue[600], size: 20),
+              const SizedBox(width: 8),
               Text(
-                value,
+                'Sales Trend',
                 style: TextStyle(
                   fontSize: UIUtils.getResponsiveFontSize(context, 16),
                   fontWeight: FontWeight.bold,
                   color: Colors.grey[800],
                 ),
               ),
-              if (subtitle.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: UIUtils.getResponsiveFontSize(context, 12),
-                    color: Colors.green[600],
-                    fontWeight: FontWeight.w500,
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: diffPct >= 0 ? Colors.green[50] : Colors.red[50],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: diffPct >= 0 ? Colors.green[300]! : Colors.red[300]!,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  diffPct >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                  color: diffPct >= 0 ? Colors.green[700] : Colors.red[700],
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    "Next Day Sales: RM${(forecast / 1000).toStringAsFixed(1)}k "
+                    "(${diffPct >= 0 ? '+' : ''}${diffPct.toStringAsFixed(0)}%)",
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 13),
+                      color: diffPct >= 0 ? Colors.green[700] : Colors.red[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: LineChart(
+              LineChartData(
+                // ✅ Calculate dynamic min/max for Y axis
+                minY:
+                    (spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) -
+                            500)
+                        .clamp(0, double.infinity),
+                maxY:
+                    spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 500,
+
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: 1000, // ✅ step by 1k
+                      getTitlesWidget: (value, meta) {
+                        if (value % 1000 == 0) {
+                          return Text(
+                            '${(value ~/ 1000)}k',
+                            style: TextStyle(
+                              fontSize: UIUtils.getResponsiveFontSize(
+                                context,
+                                11,
+                              ),
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final now = DateTime.now();
+                        final start = now.subtract(const Duration(days: 5));
+
+                        if (value.toInt() >= 0 && value.toInt() <= 6) {
+                          final date = start.add(Duration(days: value.toInt()));
+                          String label;
+
+                          if (value.toInt() == 4) {
+                            label = "Yest";
+                          } else if (value.toInt() == 5) {
+                            label = "Today";
+                          } else if (value.toInt() == 6) {
+                            label = "Tmr";
+                          } else {
+                            label = "${date.day}/${date.month}";
+                          }
+
+                          final isLongLabel = label.length > 5;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  isLongLabel ? 9 : 11,
+                                ),
+                                color: value.toInt() == 6
+                                    ? Colors.orange[700]
+                                    : Colors.grey[600],
+                                fontWeight: value.toInt() == 6
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                ),
+
+                borderData: FlBorderData(show: false),
+
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: Colors.blue[600],
+                    barWidth: 3,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: index == 6 ? 6 : 4,
+                          color: index == 6 ? Colors.orange : Colors.blue[600]!,
+                          strokeWidth: index == 6 ? 2 : 0,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: Colors.blue[600]!.withOpacity(0.1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekdayVsWeekendChart() {
+    // 🔄 Use same data as Sales Trend chart
+    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200];
+
+    final weekdaySales = [
+      sales[0],
+      sales[3],
+      sales[4],
+      sales[5],
+    ]; // Fri, Mon, Tue, Wed
+    final weekendSales = [sales[1], sales[2]]; // Sat, Sun
+
+    final weekdayAvg =
+        weekdaySales.reduce((a, b) => a + b) / weekdaySales.length;
+    final weekendAvg =
+        weekendSales.reduce((a, b) => a + b) / weekendSales.length;
+
+    final ratio = (weekendAvg / weekdayAvg);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_today, color: Colors.purple[600], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Weekday vs Weekend Sales',
+                style: TextStyle(
+                  fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.purple[50],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.purple[300]!, width: 1),
+            ),
+            child: Text(
+              "🎉 Weekend: ${ratio.toStringAsFixed(2)}x higher per day",
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 13),
+                color: Colors.purple[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: (weekendAvg / 1000).ceil() * 1000,
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${(value / 1000).toStringAsFixed(1)}k',
+                          style: TextStyle(
+                            fontSize: UIUtils.getResponsiveFontSize(
+                              context,
+                              11,
+                            ),
+                            color: Colors.grey[600],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        switch (value.toInt()) {
+                          case 0:
+                            return Text(
+                              'Weekday',
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  12,
+                                ),
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          case 1:
+                            return Text(
+                              'Weekend',
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  12,
+                                ),
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          default:
+                            return const Text('');
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: [
+                  BarChartGroupData(
+                    x: 0,
+                    barRods: [
+                      BarChartRodData(
+                        toY: weekdayAvg,
+                        color: Colors.blue[400],
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 1,
+                    barRods: [
+                      BarChartRodData(
+                        toY: weekendAvg,
+                        color: Colors.purple[400],
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoVsNonPromoChart() {
+    // 🔄 Use same data as Sales Trend chart
+    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200];
+
+    final nonPromoSales = [
+      sales[0],
+      sales[1],
+      sales[3],
+      sales[4],
+      sales[5],
+    ]; // Normal days
+    final promoSales = [sales[2]]; // Promo days (weekend)
+
+    final nonPromoAvg =
+        nonPromoSales.reduce((a, b) => a + b) / nonPromoSales.length;
+    final promoAvg = promoSales.reduce((a, b) => a + b) / promoSales.length;
+
+    final ratio = (promoAvg / nonPromoAvg);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Promo vs Non-Promo Sales',
+                style: TextStyle(
+                  fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.orange[300]!, width: 1),
+            ),
+            child: Text(
+              "🔥 Promo: ${ratio.toStringAsFixed(2)}x boost in sales",
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 13),
+                color: Colors.orange[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: (promoAvg / 1000).ceil() * 1000,
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${(value / 1000).toStringAsFixed(1)}k',
+                          style: TextStyle(
+                            fontSize: UIUtils.getResponsiveFontSize(
+                              context,
+                              11,
+                            ),
+                            color: Colors.grey[600],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        switch (value.toInt()) {
+                          case 0:
+                            return Text(
+                              'Non-Promo',
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  12,
+                                ),
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          case 1:
+                            return Text(
+                              'With Promo',
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  12,
+                                ),
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          default:
+                            return const Text('');
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: [
+                  BarChartGroupData(
+                    x: 0,
+                    barRods: [
+                      BarChartRodData(
+                        toY: nonPromoAvg,
+                        color: Colors.grey[400],
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 1,
+                    barRods: [
+                      BarChartRodData(
+                        toY: promoAvg,
+                        color: Colors.orange[400],
+                        width: 40,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
