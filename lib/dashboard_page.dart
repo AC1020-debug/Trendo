@@ -273,6 +273,10 @@ class _DashboardPageState extends State<DashboardPage> {
         _buildWeekdayVsWeekendChart(),
         const SizedBox(height: 16),
         _buildPromoVsNonPromoChart(),
+        const SizedBox(height: 16),
+        _buildProductSalesChart(),
+        const SizedBox(height: 16),
+        _buildOutletPerformanceChart(),
       ],
     );
   }
@@ -285,15 +289,18 @@ class _DashboardPageState extends State<DashboardPage> {
       FlSpot(3, 4000), // Mon
       FlSpot(4, 3300), // Tue
       FlSpot(5, 3400), // Wed (Today = Wed)
-      FlSpot(6, 3200), // Thu (Tomorrow forecast)
+      FlSpot(6, 3200), // Thu (Day 1 forecast)
+      FlSpot(7, 3500), // Fri (Day 2 forecast)
+      FlSpot(8, 5000), // Sat (Day 3 forecast)
     ];
 
-    // Today & Forecast
+    // Today & 3-Day Forecast
     final today = spots[5].y;
-    final forecast = spots[6].y;
+    final forecast3Day = [spots[6].y, spots[7].y, spots[8].y];
+    final avgForecast = forecast3Day.reduce((a, b) => a + b) / forecast3Day.length;
 
-    // Compare forecast vs today
-    final diffPct = ((forecast - today) / today) * 100;
+    // Compare average forecast vs today
+    final diffPct = ((avgForecast - today) / today) * 100;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -341,8 +348,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    "Next Day Sales: RM${(forecast / 1000).toStringAsFixed(1)}k "
-                    "(${diffPct >= 0 ? '+' : ''}${diffPct.toStringAsFixed(0)}%)",
+                    "Next 3 Days Avg: RM${(avgForecast / 1000).toStringAsFixed(2)}k "
+                    "(${diffPct >= 0 ? '+' : ''}${diffPct.toStringAsFixed(2)}%)",
                     style: TextStyle(
                       fontSize: UIUtils.getResponsiveFontSize(context, 13),
                       color: diffPct >= 0 ? Colors.green[700] : Colors.red[700],
@@ -360,6 +367,22 @@ class _DashboardPageState extends State<DashboardPage> {
             height: MediaQuery.of(context).size.height * 0.25,
             child: LineChart(
               LineChartData(
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.6),
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        return LineTooltipItem(
+                          'RM${(spot.y).toStringAsFixed(2)}',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
                 // ✅ Calculate dynamic min/max for Y axis
                 minY:
                     (spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) -
@@ -375,11 +398,11 @@ class _DashboardPageState extends State<DashboardPage> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 40,
-                      interval: 1000, // ✅ step by 1k
+                      interval: 1000,
                       getTitlesWidget: (value, meta) {
                         if (value % 1000 == 0) {
                           return Text(
-                            '${(value ~/ 1000)}k',
+                            '${(value / 1000).toStringAsFixed(2)}k',
                             style: TextStyle(
                               fontSize: UIUtils.getResponsiveFontSize(
                                 context,
@@ -407,7 +430,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         final now = DateTime.now();
                         final start = now.subtract(const Duration(days: 5));
 
-                        if (value.toInt() >= 0 && value.toInt() <= 6) {
+                        if (value.toInt() >= 0 && value.toInt() <= 8) {
                           final date = start.add(Duration(days: value.toInt()));
                           String label;
 
@@ -415,13 +438,14 @@ class _DashboardPageState extends State<DashboardPage> {
                             label = "Yest";
                           } else if (value.toInt() == 5) {
                             label = "Today";
-                          } else if (value.toInt() == 6) {
-                            label = "Tmr";
+                          } else if (value.toInt() >= 6 && value.toInt() <= 8) {
+                            label = "D+${value.toInt() - 5}";
                           } else {
                             label = "${date.day}/${date.month}";
                           }
 
                           final isLongLabel = label.length > 5;
+                          final isForecast = value.toInt() >= 6;
 
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
@@ -432,10 +456,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                   context,
                                   isLongLabel ? 9 : 11,
                                 ),
-                                color: value.toInt() == 6
+                                color: isForecast
                                     ? Colors.orange[700]
                                     : Colors.grey[600],
-                                fontWeight: value.toInt() == 6
+                                fontWeight: isForecast
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                               ),
@@ -459,10 +483,11 @@ class _DashboardPageState extends State<DashboardPage> {
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
+                        final isForecast = index >= 6;
                         return FlDotCirclePainter(
-                          radius: index == 6 ? 6 : 4,
-                          color: index == 6 ? Colors.orange : Colors.blue[600]!,
-                          strokeWidth: index == 6 ? 2 : 0,
+                          radius: isForecast ? 6 : 4,
+                          color: isForecast ? Colors.orange : Colors.blue[600]!,
+                          strokeWidth: isForecast ? 2 : 0,
                           strokeColor: Colors.white,
                         );
                       },
@@ -482,16 +507,18 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildWeekdayVsWeekendChart() {
-    // 🔄 Use same data as Sales Trend chart
-    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200];
+    // 🔄 Use same data as Sales Trend chart (including 3-day forecast)
+    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200, 3500, 5000];
 
     final weekdaySales = [
       sales[0],
       sales[3],
       sales[4],
       sales[5],
-    ]; // Fri, Mon, Tue, Wed
-    final weekendSales = [sales[1], sales[2]]; // Sat, Sun
+      sales[6],
+      sales[7],
+    ]; // Fri, Mon, Tue, Wed, Thu, Fri
+    final weekendSales = [sales[1], sales[2], sales[8]]; // Sat, Sun, Sat
 
     final weekdayAvg =
         weekdaySales.reduce((a, b) => a + b) / weekdaySales.length;
@@ -546,6 +573,20 @@ class _DashboardPageState extends State<DashboardPage> {
             height: MediaQuery.of(context).size.height * 0.25,
             child: BarChart(
               BarChartData(
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.6),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      return BarTooltipItem(
+                        'RM${(rod.toY).toStringAsFixed(2)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 alignment: BarChartAlignment.spaceAround,
                 maxY: (weekendAvg / 1000).ceil() * 1000,
                 gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -556,7 +597,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) {
                         return Text(
-                          '${(value / 1000).toStringAsFixed(1)}k',
+                          '${(value / 1000).toStringAsFixed(2)}k',
                           style: TextStyle(
                             fontSize: UIUtils.getResponsiveFontSize(
                               context,
@@ -587,7 +628,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   context,
                                   12,
                                 ),
-                                color: Colors.grey[700],
+                                color: Colors.grey[600],
                                 fontWeight: FontWeight.w500,
                               ),
                             );
@@ -599,7 +640,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   context,
                                   12,
                                 ),
-                                color: Colors.grey[700],
+                                color: Colors.grey[600],
                                 fontWeight: FontWeight.w500,
                               ),
                             );
@@ -648,23 +689,20 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildPromoVsNonPromoChart() {
-    // 🔄 Use same data as Sales Trend chart
-    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200];
+    // Different promo types with their average sales
+    final promoData = [
+      {'name': 'Buy 1 Free 1', 'sales': 5800.0, 'color': Colors.orange[600]!},
+      {'name': 'Flash Sale', 'sales': 5200.0, 'color': Colors.red[600]!},
+      {'name': '20% Off', 'sales': 4500.0, 'color': Colors.purple[600]!},
+      // {'name': 'Bundle Deal', 'sales': 4200.0, 'color': Colors.blue[600]!},
+      {'name': 'Non-Promo', 'sales': 3400.0, 'color': Colors.grey[400]!},
+    ];
 
-    final nonPromoSales = [
-      sales[0],
-      sales[1],
-      sales[3],
-      sales[4],
-      sales[5],
-    ]; // Normal days
-    final promoSales = [sales[2]]; // Promo days (weekend)
-
-    final nonPromoAvg =
-        nonPromoSales.reduce((a, b) => a + b) / nonPromoSales.length;
-    final promoAvg = promoSales.reduce((a, b) => a + b) / promoSales.length;
-
-    final ratio = (promoAvg / nonPromoAvg);
+    // Calculate effectiveness compared to non-promo
+    final nonPromoSales = promoData.last['sales'] as double;
+    final bestPromo = promoData.first;
+    final bestPromoSales = bestPromo['sales'] as double;
+    final boost = ((bestPromoSales - nonPromoSales) / nonPromoSales) * 100;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -681,7 +719,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
               const SizedBox(width: 8),
               Text(
-                'Promo vs Non-Promo Sales',
+                'Promo Effectiveness',
                 style: TextStyle(
                   fontSize: UIUtils.getResponsiveFontSize(context, 16),
                   fontWeight: FontWeight.bold,
@@ -699,7 +737,7 @@ class _DashboardPageState extends State<DashboardPage> {
               border: Border.all(color: Colors.orange[300]!, width: 1),
             ),
             child: Text(
-              "🔥 Promo: ${ratio.toStringAsFixed(2)}x boost in sales",
+              "🔥 Best: ${bestPromo['name']} (+${boost.toStringAsFixed(2)}% vs non-promo)",
               style: TextStyle(
                 fontSize: UIUtils.getResponsiveFontSize(context, 13),
                 color: Colors.orange[700],
@@ -712,8 +750,23 @@ class _DashboardPageState extends State<DashboardPage> {
             height: MediaQuery.of(context).size.height * 0.25,
             child: BarChart(
               BarChartData(
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.6),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final promoName = promoData[groupIndex]['name'] as String;
+                      return BarTooltipItem(
+                        '$promoName\nRM${(rod.toY).toStringAsFixed(2)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 alignment: BarChartAlignment.spaceAround,
-                maxY: (promoAvg / 1000).ceil() * 1000,
+                maxY: (bestPromoSales / 1000).ceil() * 1000,
                 gridData: FlGridData(show: true, drawVerticalLine: false),
 
                 titlesData: FlTitlesData(
@@ -723,7 +776,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) {
                         return Text(
-                          '${(value / 1000).toStringAsFixed(1)}k',
+                          '${(value / 1000).toStringAsFixed(2)}k',
                           style: TextStyle(
                             fontSize: UIUtils.getResponsiveFontSize(
                               context,
@@ -745,67 +798,69 @@ class _DashboardPageState extends State<DashboardPage> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        switch (value.toInt()) {
-                          case 0:
-                            return Text(
-                              'Non-Promo',
+                        final index = value.toInt();
+                        if (index >= 0 && index < promoData.length) {
+                          final name = promoData[index]['name'] as String;
+                          // Shorten names for better fit
+                          String displayName;
+                          switch (name) {
+                            case 'Buy 1 Free 1':
+                              displayName = 'B1F1';
+                              break;
+                            case 'Flash Sale':
+                              displayName = 'Flash';
+                              break;
+                            case '20% Off':
+                              displayName = '20%';
+                              break;
+                            // case 'Bundle Deal':
+                            //   displayName = 'Bundle';
+                            //   break;
+                            case 'Non-Promo':
+                              displayName = 'None';
+                              break;
+                            default:
+                              displayName = name;
+                          }
+                          
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              displayName,
                               style: TextStyle(
                                 fontSize: UIUtils.getResponsiveFontSize(
                                   context,
-                                  12,
+                                  9,
                                 ),
-                                color: Colors.grey[700],
+                                color: Colors.grey[600],
                                 fontWeight: FontWeight.w500,
                               ),
-                            );
-                          case 1:
-                            return Text(
-                              'With Promo',
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  12,
-                                ),
-                                color: Colors.grey[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            );
-                          default:
-                            return const Text('');
+                              textAlign: TextAlign.center,
+                            ),
+                          );
                         }
+                        return const Text('');
                       },
                     ),
                   ),
                 ),
                 borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(
-                    x: 0,
+                barGroups: List.generate(
+                  promoData.length,
+                  (index) => BarChartGroupData(
+                    x: index,
                     barRods: [
                       BarChartRodData(
-                        toY: nonPromoAvg,
-                        color: Colors.grey[400],
-                        width: 40,
+                        toY: promoData[index]['sales'] as double,
+                        color: promoData[index]['color'] as Color,
+                        width: 35,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(4),
                         ),
                       ),
                     ],
                   ),
-                  BarChartGroupData(
-                    x: 1,
-                    barRods: [
-                      BarChartRodData(
-                        toY: promoAvg,
-                        color: Colors.orange[400],
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -813,6 +868,343 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+
+  Widget _buildProductSalesChart() {
+  // Product sales data (average daily sales) - sorted highest to lowest
+  final productData = [
+    {'name': 'Rice', 'sales': 1850.0, 'color': Colors.brown[400]!},
+    {'name': 'Chicken', 'sales': 1520.0, 'color': Colors.orange[400]!},
+    {'name': 'Eggs', 'sales': 1340.0, 'color': Colors.amber[400]!},
+    {'name': 'Cooking Oil', 'sales': 980.0, 'color': Colors.yellow[600]!},
+    {'name': 'Sugar', 'sales': 720.0, 'color': Colors.grey[400]!},
+  ];
+
+  final topProduct = productData.first;
+  final topProductSales = topProduct['sales'] as double;
+  final totalSales = productData.fold<double>(
+    0,
+    (sum, item) => sum + (item['sales'] as double),
+  );
+  final topPercentage = (topProductSales / totalSales) * 100;
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.shopping_basket, color: Colors.brown[600], size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Product Sales Performance',
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.brown[50],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.brown[300]!, width: 1),
+          ),
+          child: Text(
+            "🌾 Top: ${topProduct['name']} (RM${(topProductSales / 1000).toStringAsFixed(2)}k, ${topPercentage.toStringAsFixed(1)}%)",
+            
+            style: TextStyle(
+              fontSize: UIUtils.getResponsiveFontSize(context, 13),
+              color: Colors.brown[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.25,
+          child: BarChart(
+            BarChartData(
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipBgColor: Colors.black.withOpacity(0.5),
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final productName = productData[groupIndex]['name'] as String;
+                    return BarTooltipItem(
+                      'RM${(rod.toY).toStringAsFixed(2)}',
+                      // '$productName\nRM${(rod.toY).toStringAsFixed(2)}',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              alignment: BarChartAlignment.spaceAround,
+              maxY: (topProductSales / 500).ceil() * 500,
+              gridData: FlGridData(show: true, drawVerticalLine: false),
+
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 40,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        '${(value / 1000).toStringAsFixed(1)}k',
+                        style: TextStyle(
+                          fontSize: UIUtils.getResponsiveFontSize(
+                            context,
+                            11,
+                          ),
+                          color: Colors.grey[600],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index >= 0 && index < productData.length) {
+                        final name = productData[index]['name'] as String;
+                        String displayName;
+                        switch (name) {
+                          case 'Cooking Oil':
+                            displayName = 'Oil';
+                            break;
+                          default:
+                            displayName = name;
+                        }
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            displayName,
+                            style: TextStyle(
+                              fontSize: UIUtils.getResponsiveFontSize(
+                                context,
+                                10,
+                              ),
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      return const Text('');
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: List.generate(
+                productData.length,
+                (index) => BarChartGroupData(
+                  x: index,
+                  barRods: [
+                    BarChartRodData(
+                      toY: productData[index]['sales'] as double,
+                      color: productData[index]['color'] as Color,
+                      width: 35,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildOutletPerformanceChart() {
+  // Outlet performance data (average daily sales) - top 3 and bottom 3
+  final outletData = [
+    {'name': 'KLCC', 'sales': 2850.0, 'color': Colors.green[600]!, 'isTop': true},
+    {'name': 'Pavilion', 'sales': 2640.0, 'color': Colors.green[500]!, 'isTop': true},
+    {'name': 'Mid Valley', 'sales': 2380.0, 'color': Colors.green[400]!, 'isTop': true},
+    {'name': 'Setapak', 'sales': 1120.0, 'color': Colors.red[400]!, 'isTop': false},
+    {'name': 'Ampang', 'sales': 980.0, 'color': Colors.red[500]!, 'isTop': false},
+    {'name': 'Cheras', 'sales': 850.0, 'color': Colors.red[600]!, 'isTop': false},
+  ];
+
+  final topOutlet = outletData.first;
+  final bottomOutlet = outletData.last;
+  final topSales = topOutlet['sales'] as double;
+  final bottomSales = bottomOutlet['sales'] as double;
+  final gap = ((topSales - bottomSales) / bottomSales) * 100;
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.store, color: Colors.green[600], size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Outlet Performance',
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.green[300]!, width: 1),
+          ),
+          child: Text(
+            "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k/day (${gap.toStringAsFixed(0)}% higher than lowest)",
+            style: TextStyle(
+              fontSize: UIUtils.getResponsiveFontSize(context, 13),
+              color: Colors.green[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.25,
+          child: BarChart(
+            BarChartData(
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipBgColor: Colors.black.withOpacity(0.5),
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final outletName = outletData[groupIndex]['name'] as String;
+                    final isTop = outletData[groupIndex]['isTop'] as bool;
+                    return BarTooltipItem(
+                      '$outletName\nRM${(rod.toY).toStringAsFixed(2)}/day\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              alignment: BarChartAlignment.spaceAround,
+              maxY: (topSales / 500).ceil() * 500,
+              gridData: FlGridData(show: true, drawVerticalLine: false),
+
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 40,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        '${(value / 1000).toStringAsFixed(1)}k',
+                        style: TextStyle(
+                          fontSize: UIUtils.getResponsiveFontSize(
+                            context,
+                            11,
+                          ),
+                          color: Colors.grey[600],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index >= 0 && index < outletData.length) {
+                        final name = outletData[index]['name'] as String;
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Transform.rotate(
+                            angle: -0.5,
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: UIUtils.getResponsiveFontSize(
+                                  context,
+                                  9,
+                                ),
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+                      return const Text('');
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: List.generate(
+                outletData.length,
+                (index) => BarChartGroupData(
+                  x: index,
+                  barRods: [
+                    BarChartRodData(
+                      toY: outletData[index]['sales'] as double,
+                      color: outletData[index]['color'] as Color,
+                      width: 30,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildFilters() {
     return Row(
