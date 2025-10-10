@@ -4,8 +4,8 @@ import '../models/enums.dart';
 
 class AppConstants {
   // Risk Level Thresholds
-  static const int HIGH_RISK_THRESHOLD_DAYS = 5;
-  static const int MEDIUM_RISK_THRESHOLD_DAYS = 30;
+  static const int HIGH_RISK_THRESHOLD_DAYS = 4;
+  static const int MEDIUM_RISK_THRESHOLD_DAYS = 10;
   
   // Color Mappings for Risk Levels
   static const Map<RiskLevel, Color> riskColors = {
