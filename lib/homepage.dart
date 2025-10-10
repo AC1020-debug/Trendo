@@ -16,6 +16,8 @@ import 'dart:convert';
 import 'services/news.dart';
 import 'utils/utils.dart';
 import 'widget/draggable_chatbot.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -878,9 +880,9 @@ class _HomePageState extends State<HomePage> {
               _buildProductCard(Icons.water_drop, 'Cooking Oil',
                   'cooking_oil', Colors.amber[700]!),
               _buildProductCard(
-                  Icons.set_meal, 'Chicken', 'chicken', Colors.red[600]!),
+                  MdiIcons.foodDrumstick, 'Chicken', 'chicken', Colors.red[600]!),
               _buildProductCard(
-                  Icons.science, 'Sugar', 'sugar', Colors.pink[600]!),
+                  MdiIcons.sack, 'Sugar', 'sugar', Colors.pink[600]!),
             ],
           ),
         ],
