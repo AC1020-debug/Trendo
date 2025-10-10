@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'services/news.dart';
 import 'utils/utils.dart';
+import 'widget/draggable_chatbot.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -96,6 +97,81 @@ class _HomePageState extends State<HomePage> {
         ChartData('Mar', 7800, 7750),
         ChartData('Apr', 8800, null),
         ChartData('May', 9200, null),
+      ],
+    },
+    'cooking_oil': {
+      'daily': [
+        ChartData('Mon', 180, 175),
+        ChartData('Tue', 195, 190),
+        ChartData('Wed', 170, 168),
+        ChartData('Thu', 205, null),
+        ChartData('Fri', 220, null),
+        ChartData('Sat', 235, null),
+        ChartData('Sun', 200, null),
+      ],
+      'weekly': [
+        ChartData('W1', 1200, 1180),
+        ChartData('W2', 1350, 1320),
+        ChartData('W3', 1150, 1130),
+        ChartData('W4', 1450, null),
+        ChartData('W5', 1500, null),
+      ],
+      'monthly': [
+        ChartData('Jan', 5000, 4900),
+        ChartData('Feb', 5400, 5300),
+        ChartData('Mar', 5800, 5700),
+        ChartData('Apr', 6200, null),
+        ChartData('May', 6500, null),
+      ],
+    },
+    'chicken': {
+      'daily': [
+        ChartData('Mon', 300, 290),
+        ChartData('Tue', 330, 320),
+        ChartData('Wed', 280, 275),
+        ChartData('Thu', 350, null),
+        ChartData('Fri', 380, null),
+        ChartData('Sat', 400, null),
+        ChartData('Sun', 320, null),
+      ],
+      'weekly': [
+        ChartData('W1', 2100, 2050),
+        ChartData('W2', 2300, 2250),
+        ChartData('W3', 2000, 1980),
+        ChartData('W4', 2500, null),
+        ChartData('W5', 2650, null),
+      ],
+      'monthly': [
+        ChartData('Jan', 8800, 8600),
+        ChartData('Feb', 9500, 9300),
+        ChartData('Mar', 9200, 9000),
+        ChartData('Apr', 10200, null),
+        ChartData('May', 10800, null),
+      ],
+    },
+    'sugar': {
+      'daily': [
+        ChartData('Mon', 160, 155),
+        ChartData('Tue', 175, 170),
+        ChartData('Wed', 150, 148),
+        ChartData('Thu', 185, null),
+        ChartData('Fri', 195, null),
+        ChartData('Sat', 210, null),
+        ChartData('Sun', 180, null),
+      ],
+      'weekly': [
+        ChartData('W1', 1100, 1080),
+        ChartData('W2', 1200, 1180),
+        ChartData('W3', 1050, 1030),
+        ChartData('W4', 1300, null),
+        ChartData('W5', 1350, null),
+      ],
+      'monthly': [
+        ChartData('Jan', 4500, 4400),
+        ChartData('Feb', 4900, 4800),
+        ChartData('Mar', 5100, 5000),
+        ChartData('Apr', 5500, null),
+        ChartData('May', 5800, null),
       ],
     },
   };
@@ -501,13 +577,12 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        // DraggableChatbot(), // Add this line
+        DraggableChatbot(),
       ],
     );
   }
 
   Widget _buildNewsHeader() {
-    // TODO: redirect users to news url on click
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         setState(() {
@@ -574,20 +649,31 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     )
-                  : Text(
-                      newsItems[currentNewsIndex].headline,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: responsiveFont(context, 13, min: 11, max: 16),
-                        height: 1.3,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.justify,
-                    ),
+                  : newsItems.isNotEmpty
+                      ? Text(
+                          newsItems[currentNewsIndex].headline,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize:
+                                responsiveFont(context, 13, min: 11, max: 16),
+                            height: 1.3,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.justify,
+                        )
+                      : Text(
+                          'No news available at the moment',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize:
+                                responsiveFont(context, 13, min: 11, max: 16),
+                            height: 1.3,
+                          ),
+                        ),
             ),
             const SizedBox(height: 6),
-            // 🔹 Dots indicator
+            // Dots indicator
             if (newsItems.isNotEmpty)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -646,22 +732,113 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHomeTab() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          _buildQuickStats(),
+          const SizedBox(height: 16),
           _buildProductSelection(),
           const SizedBox(height: 16),
-          Expanded(child: _buildForecastChart()),
+          SizedBox(
+            height: 400,
+            child: _buildForecastChart(),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickStats() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              icon: Icons.shopping_basket,
+              label: 'Total Products',
+              value: '5',
+              color: Colors.blue,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 50,
+            color: Colors.grey[200],
+          ),
+          Expanded(
+            child: _buildStatItem(
+              icon: Icons.inventory_2,
+              label: 'In Stock',
+              value: '1,234',
+              color: Colors.green,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 50,
+            color: Colors.grey[200],
+          ),
+          Expanded(
+            child: _buildStatItem(
+              icon: Icons.warning_amber_rounded,
+              label: 'Low Stock',
+              value: '2',
+              color: Colors.orange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
   Widget _buildProductSelection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -679,33 +856,31 @@ class _HomePageState extends State<HomePage> {
           Text(
             'Select Product',
             style: TextStyle(
-              fontSize: responsiveFont(context, 18, min: 14, max: 20),
+              fontSize: responsiveFont(context, 16, min: 14, max: 18),
               fontWeight: FontWeight.w600,
               color: Colors.grey[800],
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
+          const SizedBox(height: 12),
+          // Grid of products (3 columns, 2 rows)
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.0,
             children: [
-              Expanded(
-                child: _buildProductButton(
-                  Icons.grass,
-                  'Rice',
-                  selectedProduct == 'rice',
-                  () => setState(() => selectedProduct = 'rice'),
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildProductButton(
-                  Icons.egg_outlined,
-                  'Egg',
-                  selectedProduct == 'egg',
-                  () => setState(() => selectedProduct = 'egg'),
-                  Colors.orange,
-                ),
-              ),
+              _buildProductCard(
+                  Icons.grass, 'Rice', 'rice', Colors.green[600]!),
+              _buildProductCard(
+                  Icons.egg_outlined, 'Egg', 'egg', Colors.orange[600]!),
+              _buildProductCard(Icons.water_drop, 'Cooking Oil',
+                  'cooking_oil', Colors.amber[700]!),
+              _buildProductCard(
+                  Icons.set_meal, 'Chicken', 'chicken', Colors.red[600]!),
+              _buildProductCard(
+                  Icons.science, 'Sugar', 'sugar', Colors.pink[600]!),
             ],
           ),
         ],
@@ -713,18 +888,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductButton(
-    IconData icon,
-    String label,
-    bool isSelected,
-    VoidCallback onTap,
-    Color color,
-  ) {
+  Widget _buildProductCard(
+      IconData icon, String label, String value, Color color) {
+    bool isSelected = selectedProduct == value;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => setState(() => selectedProduct = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.1) : Colors.white,
           border: Border.all(
@@ -734,19 +905,131 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              size: responsiveFont(context, 32, min: 24, max: 36),
+              size: 28,
               color: isSelected ? color : Colors.grey[600],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: responsiveFont(context, 14, min: 12, max: 16),
+                fontSize: 11,
                 color: isSelected ? color : Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildActionButton(
+                icon: Icons.add_shopping_cart,
+                label: 'Add Stock',
+                color: Colors.blue[600]!,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProductPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildActionButton(
+                icon: Icons.analytics,
+                label: 'View Reports',
+                color: Colors.purple[600]!,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => DashboardPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildActionButton(
+                icon: Icons.notifications_active,
+                label: 'Alerts',
+                color: Colors.orange[600]!,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _buildActionButton(
+                icon: Icons.history,
+                label: 'Sales History',
+                color: Colors.teal[600]!,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SalesHistoryPage()),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
             ),
           ],
@@ -783,20 +1066,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildChartHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            '${selectedProduct.capitalize()} Demand Forecast',
-            style: TextStyle(
-              fontSize: responsiveFont(context, 15, min: 12, max: 18),
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                '${selectedProduct.replaceAll('_', ' ').capitalize()} Demand Forecast',
+                style: TextStyle(
+                  fontSize: responsiveFont(context, 15, min: 12, max: 18),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
+          ],
         ),
+        const SizedBox(height: 8),
         Row(
           children: [
             Icon(
