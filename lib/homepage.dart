@@ -18,6 +18,7 @@ import 'utils/utils.dart';
 import 'widget/draggable_chatbot.dart';
 import 'utils/ui_utils.dart';
 import 'recommendation_page.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -737,6 +738,8 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildSalesTrendChart(),
         const SizedBox(height: 16),
+        _buildMonthlySalesChart(),
+        const SizedBox(height: 16),
         _buildWeekdayVsWeekendChart(),
         const SizedBox(height: 16),
         _buildPromoVsNonPromoChart(),
@@ -748,30 +751,173 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // State for QuickSight embed URL (Prediction)
+  String? _quicksightEmbedUrl;
+  bool _isLoadingQuicksight = false;
+  String? _quicksightError;
+  WebViewController? _quicksightController;
+  DateTime? _quicksightUrlFetchTime;
+
+  // State for QuickSight embed URL (Monthly Sales)
+  String? _monthlySalesEmbedUrl;
+  bool _isLoadingMonthlySales = false;
+  String? _monthlySalesError;
+  WebViewController? _monthlySalesController;
+  DateTime? _monthlySalesUrlFetchTime;
+
+  // Fetch QuickSight embed URL
+  Future<void> _fetchQuicksightEmbedUrl() async {
+    setState(() {
+      _isLoadingQuicksight = true;
+      _quicksightError = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=prediction',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final embedUrl = data['embedUrl'];
+        
+        setState(() {
+          _quicksightEmbedUrl = embedUrl;
+          _quicksightUrlFetchTime = DateTime.now();
+          _isLoadingQuicksight = false;
+          
+          // Create new WebView controller with the fresh URL
+          _quicksightController = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(Colors.white)
+            ..setNavigationDelegate(
+              NavigationDelegate(
+                onPageStarted: (String url) {
+                  print('QuickSight page started loading: $url');
+                },
+                onPageFinished: (String url) {
+                  print('QuickSight page finished loading');
+                },
+                onWebResourceError: (WebResourceError error) {
+                  print('QuickSight error: ${error.description}');
+                  // If we get an auth error, the URL might be expired
+                  if (error.description.contains('401') || 
+                      error.description.contains('403') ||
+                      error.description.contains('authorization')) {
+                    setState(() {
+                      _quicksightError = 'Session expired. Please reload the dashboard.';
+                      _quicksightEmbedUrl = null;
+                    });
+                  }
+                },
+              ),
+            )
+            ..loadRequest(Uri.parse(embedUrl));
+        });
+      } else {
+        final errorBody = response.body;
+        setState(() {
+          _quicksightError = 'Failed to load dashboard (${response.statusCode}): $errorBody';
+          _isLoadingQuicksight = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _quicksightError = 'Error loading dashboard: $e';
+        _isLoadingQuicksight = false;
+      });
+    }
+  }
+  
+  // Check if QuickSight URL needs refresh (URLs typically expire after 5 minutes)
+  bool _needsQuicksightRefresh() {
+    if (_quicksightUrlFetchTime == null) return false;
+    final timeSinceFetch = DateTime.now().difference(_quicksightUrlFetchTime!);
+    return timeSinceFetch.inMinutes >= 4; // Refresh before 5-minute expiry
+  }
+
+  // Fetch Monthly Sales QuickSight embed URL
+  Future<void> _fetchMonthlySalesEmbedUrl() async {
+    setState(() {
+      _isLoadingMonthlySales = true;
+      _monthlySalesError = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=monthly',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final embedUrl = data['embedUrl'];
+        
+        setState(() {
+          _monthlySalesEmbedUrl = embedUrl;
+          _monthlySalesUrlFetchTime = DateTime.now();
+          _isLoadingMonthlySales = false;
+          
+          // Create new WebView controller with the fresh URL
+          _monthlySalesController = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(Colors.white)
+            ..setNavigationDelegate(
+              NavigationDelegate(
+                onPageStarted: (String url) {
+                  print('Monthly Sales page started loading: $url');
+                },
+                onPageFinished: (String url) {
+                  print('Monthly Sales page finished loading');
+                },
+                onWebResourceError: (WebResourceError error) {
+                  print('Monthly Sales error: ${error.description}');
+                  // If we get an auth error, the URL might be expired
+                  if (error.description.contains('401') || 
+                      error.description.contains('403') ||
+                      error.description.contains('authorization')) {
+                    setState(() {
+                      _monthlySalesError = 'Session expired. Please reload the dashboard.';
+                      _monthlySalesEmbedUrl = null;
+                    });
+                  }
+                },
+              ),
+            )
+            ..loadRequest(Uri.parse(embedUrl));
+        });
+      } else {
+        final errorBody = response.body;
+        setState(() {
+          _monthlySalesError = 'Failed to load dashboard (${response.statusCode}): $errorBody';
+          _isLoadingMonthlySales = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _monthlySalesError = 'Error loading dashboard: $e';
+        _isLoadingMonthlySales = false;
+      });
+    }
+  }
+  
+  // Check if Monthly Sales URL needs refresh
+  bool _needsMonthlySalesRefresh() {
+    if (_monthlySalesUrlFetchTime == null) return false;
+    final timeSinceFetch = DateTime.now().difference(_monthlySalesUrlFetchTime!);
+    return timeSinceFetch.inMinutes >= 4; // Refresh before 5-minute expiry
+  }
+
   Widget _buildSalesTrendChart() {
-    final List<FlSpot> spots = [
-      // FlSpot(0, 3100), // Fri last week
-      // FlSpot(1, 5200), // Sat last week
-      FlSpot(0, 5600), // Sun
-      FlSpot(1, 4100), // Mon
-      FlSpot(2, 3800), // Tue
-      FlSpot(3, 3400), // Wed
-      FlSpot(4, 3400), // Thu (Yest)
-      FlSpot(5, 3900), // Fri (Today)
-      FlSpot(6, 5000), // Sat (Day 1 forecast)
-      FlSpot(7, 5200), // Sun (Day 2 forecast)
-      FlSpot(8, 3800), // Mon (Day 3 forecast)
-    ];
-
-    // Today & 3-Day Forecast
-    final today = spots[5].y;
-    final forecast3Day = [spots[6].y, spots[7].y, spots[8].y];
-    final avgForecast =
-        forecast3Day.reduce((a, b) => a + b) / forecast3Day.length;
-
-    // Compare average forecast vs today
-    final diffPct = ((avgForecast - today) / today) * 100;
-
+    // Check if URL needs refresh
+    if (_quicksightEmbedUrl != null && _needsQuicksightRefresh()) {
+      // Silently refresh the URL in the background
+      Future.microtask(() => _fetchQuicksightEmbedUrl());
+    }
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -790,7 +936,7 @@ class _HomePageState extends State<HomePage> {
                   Icon(Icons.trending_up, color: Colors.blue[600], size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Sales Trend',
+                    'Sales Prediction',
                     style: TextStyle(
                       fontSize: UIUtils.getResponsiveFontSize(context, 16),
                       fontWeight: FontWeight.bold,
@@ -799,203 +945,396 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-
-              // 🟡 New small button
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RecommendationPage1(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Refresh button
+                  if (_quicksightEmbedUrl != null)
+                    IconButton(
+                      onPressed: _isLoadingQuicksight ? null : _fetchQuicksightEmbedUrl,
+                      icon: Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: _isLoadingQuicksight ? Colors.grey : Colors.blue[600],
+                      ),
+                      tooltip: 'Refresh Dashboard',
                     ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Go to Recommendation',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: diffPct >= 0 ? Colors.green[50] : Colors.red[50],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: diffPct >= 0 ? Colors.green[300]! : Colors.red[300]!,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  diffPct >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                  color: diffPct >= 0 ? Colors.green[700] : Colors.red[700],
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    "Next 3 Days Avg: RM${(avgForecast / 1000).toStringAsFixed(2)}k "
-                    "(${diffPct >= 0 ? '+' : ''}${diffPct.toStringAsFixed(2)}%)",
-                    style: TextStyle(
-                      fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                      color: diffPct >= 0 ? Colors.green[700] : Colors.red[700],
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: LineChart(
-              LineChartData(
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    tooltipBgColor: Colors.black.withOpacity(0.6),
-                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        return LineTooltipItem(
-                          'RM${(spot.y).toStringAsFixed(2)}',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        );
-                      }).toList();
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RecommendationPage1(),
+                        ),
+                      );
                     },
-                  ),
-                ),
-                // ✅ Calculate dynamic min/max for Y axis
-                minY:
-                    (spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) -
-                            500)
-                        .clamp(0, double.infinity),
-                maxY:
-                    spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 500,
-
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      interval: 1000,
-                      getTitlesWidget: (value, meta) {
-                        if (value % 1000 == 0) {
-                          return Text(
-                            '${(value / 1000).toStringAsFixed(2)}k',
-                            style: TextStyle(
-                              fontSize: UIUtils.getResponsiveFontSize(
-                                context,
-                                11,
-                              ),
-                              color: Colors.grey[600],
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final now = DateTime.now();
-                        final start = now.subtract(const Duration(days: 5));
-
-                        if (value.toInt() >= 0 && value.toInt() <= 8) {
-                          final date = start.add(Duration(days: value.toInt()));
-                          String label;
-
-                          if (value.toInt() == 4) {
-                            label = "Yest";
-                          } else if (value.toInt() == 5) {
-                            label = "Today";
-                          } else if (value.toInt() >= 6 && value.toInt() <= 8) {
-                            label = "D+${value.toInt() - 5}";
-                          } else {
-                            label = "${date.day}/${date.month}";
-                          }
-
-                          final isLongLabel = label.length > 5;
-                          final isForecast = value.toInt() >= 6;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  isLongLabel ? 9 : 11,
-                                ),
-                                color: isForecast
-                                    ? Colors.orange[700]
-                                    : Colors.grey[600],
-                                fontWeight: isForecast
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                ),
-
-                borderData: FlBorderData(show: false),
-
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: Colors.blue[600],
-                    barWidth: 3,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        final isForecast = index >= 6;
-                        return FlDotCirclePainter(
-                          radius: isForecast ? 6 : 4,
-                          color: isForecast ? Colors.orange : Colors.blue[600]!,
-                          strokeWidth: isForecast ? 2 : 0,
-                          strokeColor: Colors.white,
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.blue[600]!.withOpacity(0.1),
-                    ),
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    tooltip: 'Go to Recommendation',
                   ),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // QuickSight Dashboard Container
+          Container(
+            height: MediaQuery.of(context).size.height * 0.4,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: _buildQuicksightContent(),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildQuicksightContent() {
+    if (_quicksightEmbedUrl == null && !_isLoadingQuicksight && _quicksightError == null) {
+      // Initial state - show button to load dashboard
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.analytics_outlined, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Sales Prediction Dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'View AI-powered sales predictions',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchQuicksightEmbedUrl,
+              icon: const Icon(Icons.bar_chart),
+              label: const Text('Load Dashboard'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoadingQuicksight) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading dashboard...',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'This may take a few seconds',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_quicksightError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Unable to Load Dashboard',
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _quicksightError!,
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _quicksightError = null;
+                        _quicksightEmbedUrl = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _fetchQuicksightEmbedUrl,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_quicksightEmbedUrl != null && _quicksightController != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: WebViewWidget(
+          controller: _quicksightController!,
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildMonthlySalesChart() {
+    // Check if URL needs refresh
+    if (_monthlySalesEmbedUrl != null && _needsMonthlySalesRefresh()) {
+      // Silently refresh the URL in the background
+      Future.microtask(() => _fetchMonthlySalesEmbedUrl());
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.calendar_month, color: Colors.blue[600], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Monthly Sales',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Refresh button
+                  if (_monthlySalesEmbedUrl != null)
+                    IconButton(
+                      onPressed: _isLoadingMonthlySales ? null : _fetchMonthlySalesEmbedUrl,
+                      icon: Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: _isLoadingMonthlySales ? Colors.grey : Colors.blue[600],
+                      ),
+                      tooltip: 'Refresh Dashboard',
+                    ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RecommendationPage1(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    tooltip: 'Go to Recommendation',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // QuickSight Dashboard Container
+          Container(
+            height: MediaQuery.of(context).size.height * 0.4,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _buildMonthlySalesContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthlySalesContent() {
+    if (_monthlySalesEmbedUrl == null && !_isLoadingMonthlySales && _monthlySalesError == null) {
+      // Initial state - show button to load dashboard
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bar_chart_outlined, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Monthly Sales Dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'View monthly sales trends and analytics',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchMonthlySalesEmbedUrl,
+              icon: const Icon(Icons.calendar_month),
+              label: const Text('Load Dashboard'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoadingMonthlySales) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading dashboard...',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'This may take a few seconds',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_monthlySalesError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Unable to Load Dashboard',
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _monthlySalesError!,
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _monthlySalesError = null;
+                        _monthlySalesEmbedUrl = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _fetchMonthlySalesEmbedUrl,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_monthlySalesEmbedUrl != null && _monthlySalesController != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: WebViewWidget(
+          controller: _monthlySalesController!,
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  
+
 
   Widget _buildWeekdayVsWeekendChart() {
     // 🔄 Use same data as Sales Trend chart (including 3-day forecast)
@@ -1203,6 +1542,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+//   
+
 
   Widget _buildPromoVsNonPromoChart() {
     // Different promo types with their average sales
