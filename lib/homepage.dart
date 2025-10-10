@@ -76,7 +76,6 @@ class _HomePageState extends State<HomePage> {
         ChartData('May', 4500, null),
       ],
     },
-  
   };
 
   @override
@@ -446,11 +445,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          body: Column(
-            children: [
-              Expanded(child: _buildCurrentPage()),
-            ],
-          ),
+          body: Column(children: [Expanded(child: _buildCurrentPage())]),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: currentIndex,
@@ -483,8 +478,6 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-
-  
 
   void _navigateToPage(int index) async {
     switch (index) {
@@ -527,26 +520,10 @@ class _HomePageState extends State<HomePage> {
           _buildNewsCard(),
           const SizedBox(height: 16),
           _buildQuickStats(),
-          ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RecommendationPage()),
-            );
-          },
-          child: const Text('Go to Recommendation'),
-        ),
           const SizedBox(height: 16),
           _buildMetricsCards(),
-                const SizedBox(height: 20),
-                // 🟡 New Button
-        
-          // SizedBox(
-          //   height: 400,
-          //   child: _buildForecastChart(),
-          // ),
+          const SizedBox(height: 20),
         ],
-        
       ),
     );
   }
@@ -617,50 +594,52 @@ class _HomePageState extends State<HomePage> {
                     ),
                   )
                 : newsItems.isNotEmpty
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            newsItems[currentNewsIndex].headline,
-                            style: TextStyle(
-                              color: Colors.grey[800],
-                              fontSize:
-                                  responsiveFont(context, 14, min: 12, max: 16),
-                              height: 1.4,
-                            ),
-                            textAlign: TextAlign.justify,
-                          ),
-                          const SizedBox(height: 12),
-                          // Dots indicator
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(newsItems.length, (index) {
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 3),
-                                width: currentNewsIndex == index ? 10 : 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: currentNewsIndex == index
-                                      ? Colors.blue[600]
-                                      : Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              );
-                            }),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        'No news available at the moment',
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        newsItems[currentNewsIndex].headline,
                         style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize:
-                              responsiveFont(context, 14, min: 12, max: 16),
+                          color: Colors.grey[800],
+                          fontSize: responsiveFont(
+                            context,
+                            14,
+                            min: 12,
+                            max: 16,
+                          ),
                           height: 1.4,
                         ),
+                        textAlign: TextAlign.justify,
                       ),
+                      const SizedBox(height: 12),
+                      // Dots indicator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(newsItems.length, (index) {
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: currentNewsIndex == index ? 10 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: currentNewsIndex == index
+                                  ? Colors.blue[600]
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  )
+                : Text(
+                    'No news available at the moment',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: responsiveFont(context, 14, min: 12, max: 16),
+                      height: 1.4,
+                    ),
+                  ),
           ],
         ),
       ),
@@ -691,11 +670,7 @@ class _HomePageState extends State<HomePage> {
               color: Colors.blue,
             ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: Colors.grey[200],
-          ),
+          Container(width: 1, height: 50, color: Colors.grey[200]),
           Expanded(
             child: _buildStatItem(
               icon: Icons.inventory_2,
@@ -704,11 +679,7 @@ class _HomePageState extends State<HomePage> {
               color: Colors.green,
             ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: Colors.grey[200],
-          ),
+          Container(width: 1, height: 50, color: Colors.grey[200]),
           Expanded(
             child: _buildStatItem(
               icon: Icons.warning_amber_rounded,
@@ -743,257 +714,12 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
     );
   }
-
-  // Widget _buildForecastChart() {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(12),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withOpacity(0.05),
-  //           blurRadius: 10,
-  //           offset: const Offset(0, 2),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       children: [
-  //         _buildChartHeader(),
-  //         const SizedBox(height: 12),
-  //         Expanded(child: LineChart(_createLineChartData())),
-  //         const SizedBox(height: 8),
-  //         _buildChartLegend(),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildChartHeader() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         children: [
-  //           Expanded(
-  //             child: Text(
-  //               '${selectedProduct.replaceAll('_', ' ').capitalize()} Demand Forecast',
-  //               style: TextStyle(
-  //                 fontSize: responsiveFont(context, 15, min: 12, max: 18),
-  //                 fontWeight: FontWeight.w600,
-  //                 color: Colors.grey[800],
-  //               ),
-  //               maxLines: 2,
-  //               overflow: TextOverflow.ellipsis,
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //       const SizedBox(height: 8),
-  //       Row(
-  //         children: [
-  //           Icon(
-  //             Icons.calendar_today,
-  //             size: responsiveFont(context, 14, min: 12, max: 16),
-  //             color: Colors.grey[500],
-  //           ),
-  //           const SizedBox(width: 4),
-  //           DropdownButton<String>(
-  //             value: selectedPeriod,
-  //             underline: Container(),
-  //             items: const [
-  //               DropdownMenuItem(value: 'daily', child: Text('Daily')),
-  //               DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-  //               DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-  //             ],
-  //             onChanged: (value) {
-  //               setState(() {
-  //                 selectedPeriod = value!;
-  //               });
-  //             },
-  //             style: TextStyle(
-  //               fontSize: responsiveFont(context, 14, min: 12, max: 16),
-  //               color: Colors.grey[800],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildChartLegend() {
-  //   return Wrap(
-  //     alignment: WrapAlignment.center,
-  //     spacing: 24,
-  //     runSpacing: 8,
-  //     children: [
-  //       _buildLegendItem(Colors.green, 'Actual Demand'),
-  //       _buildLegendItem(Colors.blue, 'Forecasted Demand'),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildLegendItem(Color color, String label) {
-  //   return Row(
-  //     mainAxisSize: MainAxisSize.min,
-  //     children: [
-  //       Container(
-  //         width: 12,
-  //         height: 2,
-  //         decoration: BoxDecoration(
-  //           color: color,
-  //           borderRadius: BorderRadius.circular(1),
-  //         ),
-  //       ),
-  //       const SizedBox(width: 8),
-  //       Text(
-  //         label,
-  //         style: TextStyle(
-  //           fontSize: responsiveFont(context, 12, min: 10, max: 14),
-  //           color: Colors.grey[600],
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // LineChartData _createLineChartData() {
-  //   List<ChartData> data = forecastData[selectedProduct]![selectedPeriod]!;
-
-  //   return LineChartData(
-  //     gridData: FlGridData(
-  //       show: true,
-  //       drawVerticalLine: true,
-  //       horizontalInterval: 50,
-  //       verticalInterval: 1,
-  //       getDrawingHorizontalLine: (value) =>
-  //           FlLine(color: Colors.grey[300]!, strokeWidth: 1),
-  //       getDrawingVerticalLine: (value) =>
-  //           FlLine(color: Colors.grey[300]!, strokeWidth: 1),
-  //     ),
-  //     titlesData: FlTitlesData(
-  //       show: true,
-  //       bottomTitles: AxisTitles(
-  //         sideTitles: SideTitles(
-  //           showTitles: true,
-  //           reservedSize: 30,
-  //           interval: 1,
-  //           getTitlesWidget: (double value, TitleMeta meta) {
-  //             if (value.toInt() < data.length) {
-  //               return Text(
-  //                 data[value.toInt()].period,
-  //                 style: TextStyle(
-  //                   color: Colors.grey[600],
-  //                   fontWeight: FontWeight.bold,
-  //                   fontSize: responsiveFont(context, 10, min: 9, max: 13),
-  //                 ),
-  //               );
-  //             }
-  //             return const Text('');
-  //           },
-  //         ),
-  //       ),
-  //       leftTitles: AxisTitles(
-  //         sideTitles: SideTitles(
-  //           showTitles: true,
-  //           getTitlesWidget: (double value, TitleMeta meta) {
-  //             return Text(
-  //               value.toInt().toString(),
-  //               style: TextStyle(
-  //                 color: Colors.grey[600],
-  //                 fontWeight: FontWeight.bold,
-  //                 fontSize: responsiveFont(context, 12, min: 10, max: 14),
-  //               ),
-  //             );
-  //           },
-  //           reservedSize: 42,
-  //         ),
-  //       ),
-  //       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-  //       rightTitles: const AxisTitles(
-  //         sideTitles: SideTitles(showTitles: false),
-  //       ),
-  //     ),
-  //     borderData: FlBorderData(
-  //       show: true,
-  //       border: Border.all(color: Colors.grey[300]!, width: 1),
-  //     ),
-  //     minX: 0,
-  //     maxX: data.length - 1.0,
-  //     minY: 0,
-  //     maxY: data
-  //         .map((e) => e.forecast)
-  //         .reduce((a, b) => a > b ? a : b)
-  //         .toDouble(),
-  //     lineBarsData: [
-  //       LineChartBarData(
-  //         spots: data
-  //             .asMap()
-  //             .entries
-  //             .where((entry) => entry.value.actual != null)
-  //             .map((entry) {
-  //               return FlSpot(
-  //                 entry.key.toDouble(),
-  //                 entry.value.actual!.toDouble(),
-  //               );
-  //             })
-  //             .toList(),
-  //         isCurved: true,
-  //         color: Colors.green,
-  //         barWidth: 3,
-  //         isStrokeCapRound: true,
-  //         dotData: FlDotData(
-  //           show: true,
-  //           getDotPainter: (spot, percent, barData, index) =>
-  //               FlDotCirclePainter(
-  //                 radius: 4,
-  //                 color: Colors.green,
-  //                 strokeWidth: 2,
-  //                 strokeColor: Colors.white,
-  //               ),
-  //         ),
-  //         belowBarData: BarAreaData(show: false),
-  //       ),
-  //       LineChartBarData(
-  //         spots: data.asMap().entries.map((entry) {
-  //           return FlSpot(
-  //             entry.key.toDouble(),
-  //             entry.value.forecast.toDouble(),
-  //           );
-  //         }).toList(),
-  //         isCurved: true,
-  //         color: Colors.blue,
-  //         barWidth: 3,
-  //         isStrokeCapRound: true,
-  //         dashArray: [5, 5],
-  //         dotData: FlDotData(
-  //           show: true,
-  //           getDotPainter: (spot, percent, barData, index) =>
-  //               FlDotCirclePainter(
-  //                 radius: 4,
-  //                 color: Colors.blue,
-  //                 strokeWidth: 2,
-  //                 strokeColor: Colors.white,
-  //               ),
-  //         ),
-  //         belowBarData: BarAreaData(show: false),
-  //       ),
-  //     ],
-  //   );
-  // }
 
   double responsiveFont(
     BuildContext context,
@@ -1026,7 +752,6 @@ class _HomePageState extends State<HomePage> {
     final List<FlSpot> spots = [
       // FlSpot(0, 3100), // Fri last week
       // FlSpot(1, 5200), // Sat last week
-
       FlSpot(0, 5600), // Sun
       FlSpot(1, 4100), // Mon
       FlSpot(2, 3800), // Tue
@@ -1041,7 +766,8 @@ class _HomePageState extends State<HomePage> {
     // Today & 3-Day Forecast
     final today = spots[5].y;
     final forecast3Day = [spots[6].y, spots[7].y, spots[8].y];
-    final avgForecast = forecast3Day.reduce((a, b) => a + b) / forecast3Day.length;
+    final avgForecast =
+        forecast3Day.reduce((a, b) => a + b) / forecast3Day.length;
 
     // Compare average forecast vs today
     final diffPct = ((avgForecast - today) / today) * 100;
@@ -1057,36 +783,38 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    Row(
-      children: [
-        Icon(Icons.trending_up, color: Colors.blue[600], size: 20),
-        const SizedBox(width: 8),
-        Text(
-          'Sales Trend',
-          style: TextStyle(
-            fontSize: UIUtils.getResponsiveFontSize(context, 16),
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
-          ),
-        ),
-      ],
-    ),
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.trending_up, color: Colors.blue[600], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Sales Trend',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
 
-    // 🟡 New small button
-    IconButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecommendationPage()),
-        );
-      },
-      icon: const Icon(Icons.arrow_forward_ios, size: 16),
-      tooltip: 'Go to Recommendation',
-    ),
-  ],
-),
+              // 🟡 New small button
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RecommendationPage1(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                tooltip: 'Go to Recommendation',
+              ),
+            ],
+          ),
 
           const SizedBox(height: 8),
           Container(
@@ -1301,19 +1029,43 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.calendar_today, color: Colors.purple[600], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Weekday vs Weekend Sales',
-                style: TextStyle(
-                  fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: Colors.purple[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Weekday vs Weekend Sales',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
+
+              // 🟡 New small button
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RecommendationPage1(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                tooltip: 'Go to Recommendation',
               ),
             ],
           ),
+
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1479,19 +1231,39 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Promo Effectiveness',
-                style: TextStyle(
-                  fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
+              Row(
+                children: [
+                  Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Promo Effectiveness',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
+
+              // 🟡 New small button
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RecommendationPage1(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                tooltip: 'Go to Recommendation',
               ),
             ],
           ),
+
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1587,7 +1359,7 @@ class _HomePageState extends State<HomePage> {
                             default:
                               displayName = name;
                           }
-                          
+
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
@@ -1635,343 +1407,419 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProductSalesChart() {
-  // Product sales data (average daily sales) - sorted highest to lowest
-  final productData = [
-    {'name': 'Rice', 'sales': 1850.0, 'color': Colors.brown[400]!},
-    {'name': 'Chicken', 'sales': 1520.0, 'color': Colors.orange[400]!},
-    {'name': 'Eggs', 'sales': 1340.0, 'color': Colors.amber[400]!},
-    {'name': 'Cooking Oil', 'sales': 980.0, 'color': Colors.yellow[600]!},
-    {'name': 'Sugar', 'sales': 720.0, 'color': Colors.grey[400]!},
-  ];
+    // Product sales data (average daily sales) - sorted highest to lowest
+    final productData = [
+      {'name': 'Rice', 'sales': 1850.0, 'color': Colors.brown[400]!},
+      {'name': 'Chicken', 'sales': 1520.0, 'color': Colors.orange[400]!},
+      {'name': 'Eggs', 'sales': 1340.0, 'color': Colors.amber[400]!},
+      {'name': 'Cooking Oil', 'sales': 980.0, 'color': Colors.yellow[600]!},
+      {'name': 'Sugar', 'sales': 720.0, 'color': Colors.grey[400]!},
+    ];
 
-  final topProduct = productData.first;
-  final topProductSales = topProduct['sales'] as double;
-  final totalSales = productData.fold<double>(
-    0,
-    (sum, item) => sum + (item['sales'] as double),
-  );
-  final topPercentage = (topProductSales / totalSales) * 100;
+    final topProduct = productData.first;
+    final topProductSales = topProduct['sales'] as double;
+    final totalSales = productData.fold<double>(
+      0,
+      (sum, item) => sum + (item['sales'] as double),
+    );
+    final topPercentage = (topProductSales / totalSales) * 100;
 
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: UIUtils.getCardBorderRadius(),
-      boxShadow: UIUtils.getCardShadow(),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.shopping_basket, color: Colors.brown[600], size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Product Sales Performance',
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.shopping_basket,
+                    color: Colors.brown[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Product Sales Performance',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
+
+              // 🟡 New small button
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RecommendationPage1(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                tooltip: 'Go to Recommendation',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.brown[50],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.brown[300]!, width: 1),
+            ),
+            child: Text(
+              "🌾 Top: ${topProduct['name']} (RM${(topProductSales / 1000).toStringAsFixed(2)}k, ${topPercentage.toStringAsFixed(1)}%)",
+
               style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+                fontSize: UIUtils.getResponsiveFontSize(context, 13),
+                color: Colors.brown[700],
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.brown[50],
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.brown[300]!, width: 1),
           ),
-          child: Text(
-            "🌾 Top: ${topProduct['name']} (RM${(topProductSales / 1000).toStringAsFixed(2)}k, ${topPercentage.toStringAsFixed(1)}%)",
-            
-            style: TextStyle(
-              fontSize: UIUtils.getResponsiveFontSize(context, 13),
-              color: Colors.brown[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.25,
-          child: BarChart(
-            BarChartData(
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  tooltipBgColor: Colors.black.withOpacity(0.5),
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final productName = productData[groupIndex]['name'] as String;
-                    return BarTooltipItem(
-                      'RM${(rod.toY).toStringAsFixed(2)}',
-                      // '$productName\nRM${(rod.toY).toStringAsFixed(2)}',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              alignment: BarChartAlignment.spaceAround,
-              maxY: (topProductSales / 500).ceil() * 500,
-              gridData: FlGridData(show: true, drawVerticalLine: false),
-
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 40,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        '${(value / 1000).toStringAsFixed(1)}k',
-                        style: TextStyle(
-                          fontSize: UIUtils.getResponsiveFontSize(
-                            context,
-                            11,
-                          ),
-                          color: Colors.grey[600],
+          const SizedBox(height: 16),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: BarChart(
+              BarChartData(
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.5),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final productName =
+                          productData[groupIndex]['name'] as String;
+                      return BarTooltipItem(
+                        'RM${(rod.toY).toStringAsFixed(2)}',
+                        // '$productName\nRM${(rod.toY).toStringAsFixed(2)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       );
                     },
                   ),
                 ),
-                rightTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < productData.length) {
-                        final name = productData[index]['name'] as String;
-                        String displayName;
-                        switch (name) {
-                          case 'Cooking Oil':
-                            displayName = 'Oil';
-                            break;
-                          default:
-                            displayName = name;
-                        }
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            displayName,
-                            style: TextStyle(
-                              fontSize: UIUtils.getResponsiveFontSize(
-                                context,
-                                10,
-                              ),
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
+                alignment: BarChartAlignment.spaceAround,
+                maxY: (topProductSales / 500).ceil() * 500,
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${(value / 1000).toStringAsFixed(1)}k',
+                          style: TextStyle(
+                            fontSize: UIUtils.getResponsiveFontSize(
+                              context,
+                              11,
                             ),
-                            textAlign: TextAlign.center,
+                            color: Colors.grey[600],
                           ),
                         );
-                      }
-                      return const Text('');
-                    },
-                  ),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              barGroups: List.generate(
-                productData.length,
-                (index) => BarChartGroupData(
-                  x: index,
-                  barRods: [
-                    BarChartRodData(
-                      toY: productData[index]['sales'] as double,
-                      color: productData[index]['color'] as Color,
-                      width: 35,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
-                      ),
+                      },
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildOutletPerformanceChart() {
-  // Outlet performance data (average daily sales) - top 3 and bottom 3
-  final outletData = [
-    {'name': 'KLCC', 'sales': 2850.0, 'color': Colors.green[600]!, 'isTop': true},
-    {'name': 'Pavilion', 'sales': 2640.0, 'color': Colors.green[500]!, 'isTop': true},
-    {'name': 'Mid Valley', 'sales': 2380.0, 'color': Colors.green[400]!, 'isTop': true},
-    {'name': 'Setapak', 'sales': 1120.0, 'color': Colors.red[400]!, 'isTop': false},
-    {'name': 'Ampang', 'sales': 980.0, 'color': Colors.red[500]!, 'isTop': false},
-    {'name': 'Cheras', 'sales': 850.0, 'color': Colors.red[600]!, 'isTop': false},
-  ];
-
-  final topOutlet = outletData.first;
-  final bottomOutlet = outletData.last;
-  final topSales = topOutlet['sales'] as double;
-  final bottomSales = bottomOutlet['sales'] as double;
-  final gap = ((topSales - bottomSales) / bottomSales) * 100;
-
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: UIUtils.getCardBorderRadius(),
-      boxShadow: UIUtils.getCardShadow(),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.store, color: Colors.green[600], size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Outlet Performance',
-              style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.green[300]!, width: 1),
-          ),
-          child: Text(
-            "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k (${gap.toStringAsFixed(0)}% higher than lowest)",
-            style: TextStyle(
-              fontSize: UIUtils.getResponsiveFontSize(context, 13),
-              color: Colors.green[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.25,
-          child: BarChart(
-            BarChartData(
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  tooltipBgColor: Colors.black.withOpacity(0.5),
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final outletName = outletData[groupIndex]['name'] as String;
-                    final isTop = outletData[groupIndex]['isTop'] as bool;
-                    return BarTooltipItem(
-                      '$outletName\nRM${(rod.toY).toStringAsFixed(2)}\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              alignment: BarChartAlignment.spaceAround,
-              maxY: (topSales / 500).ceil() * 500,
-              gridData: FlGridData(show: true, drawVerticalLine: false),
-
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 40,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        '${(value / 1000).toStringAsFixed(1)}k',
-                        style: TextStyle(
-                          fontSize: UIUtils.getResponsiveFontSize(
-                            context,
-                            11,
-                          ),
-                          color: Colors.grey[600],
-                        ),
-                      );
-                    },
                   ),
-                ),
-                rightTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < outletData.length) {
-                        final name = outletData[index]['name'] as String;
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Transform.rotate(
-                            angle: -0.5,
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index >= 0 && index < productData.length) {
+                          final name = productData[index]['name'] as String;
+                          String displayName;
+                          switch (name) {
+                            case 'Cooking Oil':
+                              displayName = 'Oil';
+                              break;
+                            default:
+                              displayName = name;
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
-                              name,
+                              displayName,
                               style: TextStyle(
                                 fontSize: UIUtils.getResponsiveFontSize(
                                   context,
-                                  9,
+                                  10,
                                 ),
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.w500,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          ),
-                        );
-                      }
-                      return const Text('');
-                    },
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
                   ),
                 ),
-              ),
-              borderData: FlBorderData(show: false),
-              barGroups: List.generate(
-                outletData.length,
-                (index) => BarChartGroupData(
-                  x: index,
-                  barRods: [
-                    BarChartRodData(
-                      toY: outletData[index]['sales'] as double,
-                      color: outletData[index]['color'] as Color,
-                      width: 30,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(
+                  productData.length,
+                  (index) => BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: productData[index]['sales'] as double,
+                        color: productData[index]['color'] as Color,
+                        width: 35,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutletPerformanceChart() {
+    // Outlet performance data (average daily sales) - top 3 and bottom 3
+    final outletData = [
+      {
+        'name': 'KLCC',
+        'sales': 2850.0,
+        'color': Colors.green[600]!,
+        'isTop': true,
+      },
+      {
+        'name': 'Pavilion',
+        'sales': 2640.0,
+        'color': Colors.green[500]!,
+        'isTop': true,
+      },
+      {
+        'name': 'Mid Valley',
+        'sales': 2380.0,
+        'color': Colors.green[400]!,
+        'isTop': true,
+      },
+      {
+        'name': 'Setapak',
+        'sales': 1120.0,
+        'color': Colors.red[400]!,
+        'isTop': false,
+      },
+      {
+        'name': 'Ampang',
+        'sales': 980.0,
+        'color': Colors.red[500]!,
+        'isTop': false,
+      },
+      {
+        'name': 'Cheras',
+        'sales': 850.0,
+        'color': Colors.red[600]!,
+        'isTop': false,
+      },
+    ];
+
+    final topOutlet = outletData.first;
+    final bottomOutlet = outletData.last;
+    final topSales = topOutlet['sales'] as double;
+    final bottomSales = bottomOutlet['sales'] as double;
+    final gap = ((topSales - bottomSales) / bottomSales) * 100;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: UIUtils.getCardBorderRadius(),
+        boxShadow: UIUtils.getCardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.store, color: Colors.green[600], size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Outlet Performance',
+                    style: TextStyle(
+                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
+              ),
+
+              // 🟡 New small button
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RecommendationPage1(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                tooltip: 'Go to Recommendation',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.green[300]!, width: 1),
+            ),
+            child: Text(
+              "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k (${gap.toStringAsFixed(0)}% higher than lowest)",
+              style: TextStyle(
+                fontSize: UIUtils.getResponsiveFontSize(context, 13),
+                color: Colors.green[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.25,
+            child: BarChart(
+              BarChartData(
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.5),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final outletName =
+                          outletData[groupIndex]['name'] as String;
+                      final isTop = outletData[groupIndex]['isTop'] as bool;
+                      return BarTooltipItem(
+                        '$outletName\nRM${(rod.toY).toStringAsFixed(2)}\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                alignment: BarChartAlignment.spaceAround,
+                maxY: (topSales / 500).ceil() * 500,
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${(value / 1000).toStringAsFixed(1)}k',
+                          style: TextStyle(
+                            fontSize: UIUtils.getResponsiveFontSize(
+                              context,
+                              11,
+                            ),
+                            color: Colors.grey[600],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index >= 0 && index < outletData.length) {
+                          final name = outletData[index]['name'] as String;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Transform.rotate(
+                              angle: -0.5,
+                              child: Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: UIUtils.getResponsiveFontSize(
+                                    context,
+                                    9,
+                                  ),
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(
+                  outletData.length,
+                  (index) => BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: outletData[index]['sales'] as double,
+                        color: outletData[index]['color'] as Color,
+                        width: 30,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ChartData {
@@ -1987,4 +1835,3 @@ extension StringCasingExtension on String {
     return '${this[0].toUpperCase()}${substring(1)}';
   }
 }
-
