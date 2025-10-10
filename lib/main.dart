@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'homepage.dart';
-import 'widget/draggable_chatbot.dart';
+// import 'widget/draggable_chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +24,7 @@ class TrendoApp extends StatelessWidget {
       home: Stack(
         children: [
           const HomePage(),   // all your app’s navigation
-          const DraggableChatbot(), // global FAB
+          // const DraggableChatbot(), // global FAB
         ],
       ),
     );

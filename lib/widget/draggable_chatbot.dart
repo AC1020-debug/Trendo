@@ -8,37 +8,60 @@ class DraggableChatbot extends StatefulWidget {
 }
 
 class _DraggableChatbotState extends State<DraggableChatbot> {
-  static Offset? savedPosition; // persist across screens
-  Offset? position; // Make it nullable
+  static Offset? savedPosition;
+  late Offset position; // Change to 'late' and non-nullable
 
   @override
   void initState() {
     super.initState();
+    print('DraggableChatbot initState called');
+    print('savedPosition: $savedPosition');
+    
+    // Initialize position immediately - don't wait for postFrameCallback
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
       final screenSize = MediaQuery.of(context).size;
-      final buttonSize = 40.0;
-
-      setState(() {
-        position =
-            savedPosition ??
-            Offset(
-              screenSize.width - buttonSize - 20,
-              screenSize.height - buttonSize - 100,
-            );
-      });
+      final buttonSize = 60.0;
+      
+      print('Screen size in callback: $screenSize');
+      
+      // Update position after first frame if needed
+      final newPosition = savedPosition ?? Offset(
+        screenSize.width - buttonSize - 5,
+        screenSize.height - buttonSize - 85,
+      );
+      
+      if (position != newPosition) {
+        setState(() {
+          position = newPosition;
+        });
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Return empty container until position is initialized
-    if (position == null) {
-      return const SizedBox.shrink();
+    print('DraggableChatbot build called');
+    
+    // Calculate position immediately in build if not set
+    final screenSize = MediaQuery.of(context).size;
+    final buttonSize = 60.0;
+    
+    // Initialize position here for first build
+    if (!_isInitialized) {
+      position = savedPosition ?? Offset(
+        screenSize.width - buttonSize - 5,
+        screenSize.height - buttonSize - 85,
+      );
+      _isInitialized = true;
     }
+    
+    print('Displaying at position: $position');
 
     return Positioned(
-      left: position!.dx,
-      top: position!.dy,
+      left: position.dx,
+      top: position.dy,
       child: Draggable(
         feedback: _buildChatbotButton(isDragging: true),
         childWhenDragging: Container(),
@@ -54,13 +77,17 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
             newY = newY.clamp(0.0, screenSize.height - buttonSize - 80);
 
             position = Offset(newX, newY);
-            savedPosition = position; // save globally
+            savedPosition = position;
+            
+            print('Position saved: $savedPosition');
           });
         },
         child: _buildChatbotButton(isDragging: false),
       ),
     );
   }
+
+  bool _isInitialized = false;
 
   Widget _buildChatbotButton({required bool isDragging}) {
     return GestureDetector(
@@ -73,10 +100,10 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
               );
             },
       child: Opacity(
-        opacity: 0.6, // half transparent
+        opacity: 0.6,
         child: Container(
-          width: 40,
-          height: 40,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue[600]!, Colors.blue[400]!],
@@ -92,30 +119,12 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: Image.asset(
-                  'assets/icon/robot.png',
-                  width: 30,
-                  height: 30,
-                ),
-              ),
-              // Notification badge
-              // Positioned(
-              //   top: 6,
-              //   right: 6,
-              //   child: Container(
-              //     width: 10,
-              //     height: 10,
-              //     decoration: BoxDecoration(
-              //       color: Colors.red,
-              //       shape: BoxShape.circle,
-              //       border: Border.all(color: Colors.white, width: 2),
-              //     ),
-              //   ),
-              // ),
-            ],
+          child: Center(
+            child: Image.asset(
+              'assets/icon/robot.png',
+              width: 35,
+              height: 35,
+            ),
           ),
         ),
       ),

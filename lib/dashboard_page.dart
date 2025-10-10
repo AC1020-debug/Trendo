@@ -283,15 +283,18 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildSalesTrendChart() {
     final List<FlSpot> spots = [
-      FlSpot(0, 3100), // Fri last week
-      FlSpot(1, 5200), // Sat last week
-      FlSpot(2, 5800), // Sun
-      FlSpot(3, 4000), // Mon
-      FlSpot(4, 3300), // Tue
-      FlSpot(5, 3400), // Wed (Today = Wed)
-      FlSpot(6, 3200), // Thu (Day 1 forecast)
-      FlSpot(7, 3500), // Fri (Day 2 forecast)
-      FlSpot(8, 5000), // Sat (Day 3 forecast)
+      // FlSpot(0, 3100), // Fri last week
+      // FlSpot(1, 5200), // Sat last week
+
+      FlSpot(0, 5600), // Sun
+      FlSpot(1, 4100), // Mon
+      FlSpot(2, 3800), // Tue
+      FlSpot(3, 3400), // Wed
+      FlSpot(4, 3400), // Thu (Yest)
+      FlSpot(5, 3900), // Fri (Today)
+      FlSpot(6, 5000), // Sat (Day 1 forecast)
+      FlSpot(7, 5200), // Sun (Day 2 forecast)
+      FlSpot(8, 3800), // Mon (Day 3 forecast)
     ];
 
     // Today & 3-Day Forecast
@@ -377,6 +380,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
                         );
                       }).toList();
@@ -582,6 +586,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       );
                     },
@@ -760,6 +765,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       );
                     },
@@ -945,6 +951,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontSize: 11,
                       ),
                     );
                   },
@@ -1091,7 +1098,7 @@ Widget _buildOutletPerformanceChart() {
             border: Border.all(color: Colors.green[300]!, width: 1),
           ),
           child: Text(
-            "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k/day (${gap.toStringAsFixed(0)}% higher than lowest)",
+            "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k (${gap.toStringAsFixed(0)}% higher than lowest)",
             style: TextStyle(
               fontSize: UIUtils.getResponsiveFontSize(context, 13),
               color: Colors.green[700],
@@ -1111,10 +1118,11 @@ Widget _buildOutletPerformanceChart() {
                     final outletName = outletData[groupIndex]['name'] as String;
                     final isTop = outletData[groupIndex]['isTop'] as bool;
                     return BarTooltipItem(
-                      '$outletName\nRM${(rod.toY).toStringAsFixed(2)}/day\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
+                      '$outletName\nRM${(rod.toY).toStringAsFixed(2)}\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
                       const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontSize: 11,
                       ),
                     );
                   },
