@@ -17,7 +17,13 @@ import 'services/news.dart';
 import 'utils/utils.dart';
 import 'widget/draggable_chatbot.dart';
 import 'utils/ui_utils.dart';
-import 'recommendation_page.dart';
+
+import 'recommendation_page_forecast.dart';
+import 'recommendation_page_monthly.dart';
+import 'recommendation_page_promo.dart';
+import 'recommendation_page_weekly.dart';
+import 'recommendation_page_product.dart';
+import 'recommendation_page_outlet.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class HomePage extends StatefulWidget {
@@ -1395,7 +1401,7 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RecommendationPage1(),
+                      builder: (context) => const RecommendationPageWeekly(),
                     ),
                   );
                 },
@@ -1596,7 +1602,7 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RecommendationPage1(),
+                      builder: (context) => const RecommendationPagePromo(),
                     ),
                   );
                 },
@@ -1804,7 +1810,7 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RecommendationPage1(),
+                      builder: (context) => const RecommendationPageProduct(),
                     ),
                   );
                 },
@@ -2027,7 +2033,7 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RecommendationPage1(),
+                      builder: (context) => const RecommendationPageOutlet(),
                     ),
                   );
                 },
