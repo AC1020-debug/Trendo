@@ -25,6 +25,8 @@ import 'recommendation_page_weekly.dart';
 import 'recommendation_page_product.dart';
 import 'recommendation_page_outlet.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -57,33 +59,6 @@ class _HomePageState extends State<HomePage> {
 
   List<News> newsItems = [];
 
-  final Map<String, Map<String, List<ChartData>>> forecastData = {
-    'rice': {
-      'daily': [
-        ChartData('Mon', 120, 115),
-        ChartData('Tue', 135, 130),
-        ChartData('Wed', 110, 108),
-        ChartData('Thu', 145, null),
-        ChartData('Fri', 158, null),
-        ChartData('Sat', 172, null),
-        ChartData('Sun', 140, null),
-      ],
-      'weekly': [
-        ChartData('W1', 850, 820),
-        ChartData('W2', 920, 910),
-        ChartData('W3', 780, 770),
-        ChartData('W4', 1100, null),
-        ChartData('W5', 1150, null),
-      ],
-      'monthly': [
-        ChartData('Jan', 3200, 3100),
-        ChartData('Feb', 3500, 3450),
-        ChartData('Mar', 3800, 3750),
-        ChartData('Apr', 4200, null),
-        ChartData('May', 4500, null),
-      ],
-    },
-  };
 
   @override
   void initState() {
@@ -1339,836 +1314,1044 @@ class _HomePageState extends State<HomePage> {
     return const SizedBox.shrink();
   }
 
-  
+// --- State variables for QuickSight Weekday vs Weekend ---
+String? _weekdayEmbedUrl;
+bool _isLoadingWeekday = false;
+String? _weekdayError;
+WebViewController? _weekdayController;
+DateTime? _weekdayUrlFetchTime;
 
+// --- Fetch QuickSight Embed URL for Weekday vs Weekend ---
+Future<void> _fetchWeekdayEmbedUrl() async {
+  setState(() {
+    _isLoadingWeekday = true;
+    _weekdayError = null;
+  });
 
-  Widget _buildWeekdayVsWeekendChart() {
-    // 🔄 Use same data as Sales Trend chart (including 3-day forecast)
-    final sales = [3100, 5200, 5800, 4000, 3300, 3400, 3200, 3500, 5000];
-
-    final weekdaySales = [
-      sales[0],
-      sales[3],
-      sales[4],
-      sales[5],
-      sales[6],
-      sales[7],
-    ]; // Fri, Mon, Tue, Wed, Thu, Fri
-    final weekendSales = [sales[1], sales[2], sales[8]]; // Sat, Sun, Sat
-
-    final weekdayAvg =
-        weekdaySales.reduce((a, b) => a + b) / weekdaySales.length;
-    final weekendAvg =
-        weekendSales.reduce((a, b) => a + b) / weekendSales.length;
-
-    final ratio = (weekendAvg / weekdayAvg);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: UIUtils.getCardBorderRadius(),
-        boxShadow: UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: Colors.purple[600],
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Weekday vs Weekend Sales',
-                    style: TextStyle(
-                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-
-              // 🟡 New small button
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RecommendationPageWeekly(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Go to Recommendation',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.purple[50],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.purple[300]!, width: 1),
-            ),
-            child: Text(
-              "🎉 Weekend: ${ratio.toStringAsFixed(2)}x higher per day",
-              style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                color: Colors.purple[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: Colors.black.withOpacity(0.6),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        'RM${(rod.toY).toStringAsFixed(2)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (weekendAvg / 1000).ceil() * 1000,
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(2)}k',
-                          style: TextStyle(
-                            fontSize: UIUtils.getResponsiveFontSize(
-                              context,
-                              11,
-                            ),
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        switch (value.toInt()) {
-                          case 0:
-                            return Text(
-                              'Weekday',
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  12,
-                                ),
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            );
-                          case 1:
-                            return Text(
-                              'Weekend',
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  12,
-                                ),
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            );
-                          default:
-                            return const Text('');
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(
-                    x: 0,
-                    barRods: [
-                      BarChartRodData(
-                        toY: weekdayAvg,
-                        color: Colors.blue[400],
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 1,
-                    barRods: [
-                      BarChartRodData(
-                        toY: weekendAvg,
-                        color: Colors.purple[400],
-                        width: 40,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=weekday',
       ),
     );
-  }
 
-//   
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
 
+      setState(() {
+        _weekdayEmbedUrl = embedUrl;
+        _weekdayUrlFetchTime = DateTime.now();
+        _isLoadingWeekday = false;
 
-  Widget _buildPromoVsNonPromoChart() {
-    // Different promo types with their average sales
-    final promoData = [
-      {'name': 'Buy 1 Free 1', 'sales': 5800.0, 'color': Colors.orange[600]!},
-      {'name': 'Flash Sale', 'sales': 5200.0, 'color': Colors.red[600]!},
-      {'name': '20% Off', 'sales': 4500.0, 'color': Colors.purple[600]!},
-      // {'name': 'Bundle Deal', 'sales': 4200.0, 'color': Colors.blue[600]!},
-      {'name': 'Non-Promo', 'sales': 3400.0, 'color': Colors.grey[400]!},
-    ];
-
-    // Calculate effectiveness compared to non-promo
-    final nonPromoSales = promoData.last['sales'] as double;
-    final bestPromo = promoData.first;
-    final bestPromoSales = bestPromo['sales'] as double;
-    final boost = ((bestPromoSales - nonPromoSales) / nonPromoSales) * 100;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: UIUtils.getCardBorderRadius(),
-        boxShadow: UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Promo Effectiveness',
-                    style: TextStyle(
-                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-
-              // 🟡 New small button
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RecommendationPagePromo(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Go to Recommendation',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.orange[300]!, width: 1),
+        _weekdayController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.white)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                print('Weekday chart started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('Weekday chart finished loading');
+              },
+              onWebResourceError: (WebResourceError error) {
+                print('Weekday chart error: ${error.description}');
+                if (error.description.contains('401') ||
+                    error.description.contains('403') ||
+                    error.description.contains('authorization')) {
+                  setState(() {
+                    _weekdayError =
+                        'Session expired. Please reload the dashboard.';
+                    _weekdayEmbedUrl = null;
+                  });
+                }
+              },
             ),
-            child: Text(
-              "🔥 Best: ${bestPromo['name']} (+${boost.toStringAsFixed(2)}% vs non-promo)",
-              style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                color: Colors.orange[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: Colors.black.withOpacity(0.6),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final promoName = promoData[groupIndex]['name'] as String;
-                      return BarTooltipItem(
-                        '$promoName\nRM${(rod.toY).toStringAsFixed(2)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (bestPromoSales / 1000).ceil() * 1000,
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(2)}k',
-                          style: TextStyle(
-                            fontSize: UIUtils.getResponsiveFontSize(
-                              context,
-                              11,
-                            ),
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < promoData.length) {
-                          final name = promoData[index]['name'] as String;
-                          // Shorten names for better fit
-                          String displayName;
-                          switch (name) {
-                            case 'Buy 1 Free 1':
-                              displayName = 'B1F1';
-                              break;
-                            case 'Flash Sale':
-                              displayName = 'Flash';
-                              break;
-                            case '20% Off':
-                              displayName = '20%';
-                              break;
-                            // case 'Bundle Deal':
-                            //   displayName = 'Bundle';
-                            //   break;
-                            case 'Non-Promo':
-                              displayName = 'None';
-                              break;
-                            default:
-                              displayName = name;
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  9,
-                                ),
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(
-                  promoData.length,
-                  (index) => BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: promoData[index]['sales'] as double,
-                        color: promoData[index]['color'] as Color,
-                        width: 35,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductSalesChart() {
-    // Product sales data (average daily sales) - sorted highest to lowest
-    final productData = [
-      {'name': 'Rice', 'sales': 1850.0, 'color': Colors.brown[400]!},
-      {'name': 'Chicken', 'sales': 1520.0, 'color': Colors.orange[400]!},
-      {'name': 'Eggs', 'sales': 1340.0, 'color': Colors.amber[400]!},
-      {'name': 'Cooking Oil', 'sales': 980.0, 'color': Colors.yellow[600]!},
-      {'name': 'Sugar', 'sales': 720.0, 'color': Colors.grey[400]!},
-    ];
-
-    final topProduct = productData.first;
-    final topProductSales = topProduct['sales'] as double;
-    final totalSales = productData.fold<double>(
-      0,
-      (sum, item) => sum + (item['sales'] as double),
-    );
-    final topPercentage = (topProductSales / totalSales) * 100;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: UIUtils.getCardBorderRadius(),
-        boxShadow: UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.shopping_basket,
-                    color: Colors.brown[600],
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Product Sales Performance',
-                    style: TextStyle(
-                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-
-              // 🟡 New small button
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RecommendationPageProduct(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Go to Recommendation',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.brown[50],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.brown[300]!, width: 1),
-            ),
-            child: Text(
-              "🌾 Top: ${topProduct['name']} (RM${(topProductSales / 1000).toStringAsFixed(2)}k, ${topPercentage.toStringAsFixed(1)}%)",
-
-              style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                color: Colors.brown[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: Colors.black.withOpacity(0.5),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final productName =
-                          productData[groupIndex]['name'] as String;
-                      return BarTooltipItem(
-                        'RM${(rod.toY).toStringAsFixed(2)}',
-                        // '$productName\nRM${(rod.toY).toStringAsFixed(2)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (topProductSales / 500).ceil() * 500,
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(1)}k',
-                          style: TextStyle(
-                            fontSize: UIUtils.getResponsiveFontSize(
-                              context,
-                              11,
-                            ),
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < productData.length) {
-                          final name = productData[index]['name'] as String;
-                          String displayName;
-                          switch (name) {
-                            case 'Cooking Oil':
-                              displayName = 'Oil';
-                              break;
-                            default:
-                              displayName = name;
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: UIUtils.getResponsiveFontSize(
-                                  context,
-                                  10,
-                                ),
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(
-                  productData.length,
-                  (index) => BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: productData[index]['sales'] as double,
-                        color: productData[index]['color'] as Color,
-                        width: 35,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOutletPerformanceChart() {
-    // Outlet performance data (average daily sales) - top 3 and bottom 3
-    final outletData = [
-      {
-        'name': 'KLCC',
-        'sales': 2850.0,
-        'color': Colors.green[600]!,
-        'isTop': true,
-      },
-      {
-        'name': 'Pavilion',
-        'sales': 2640.0,
-        'color': Colors.green[500]!,
-        'isTop': true,
-      },
-      {
-        'name': 'Mid Valley',
-        'sales': 2380.0,
-        'color': Colors.green[400]!,
-        'isTop': true,
-      },
-      {
-        'name': 'Setapak',
-        'sales': 1120.0,
-        'color': Colors.red[400]!,
-        'isTop': false,
-      },
-      {
-        'name': 'Ampang',
-        'sales': 980.0,
-        'color': Colors.red[500]!,
-        'isTop': false,
-      },
-      {
-        'name': 'Cheras',
-        'sales': 850.0,
-        'color': Colors.red[600]!,
-        'isTop': false,
-      },
-    ];
-
-    final topOutlet = outletData.first;
-    final bottomOutlet = outletData.last;
-    final topSales = topOutlet['sales'] as double;
-    final bottomSales = bottomOutlet['sales'] as double;
-    final gap = ((topSales - bottomSales) / bottomSales) * 100;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: UIUtils.getCardBorderRadius(),
-        boxShadow: UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.store, color: Colors.green[600], size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Outlet Performance',
-                    style: TextStyle(
-                      fontSize: UIUtils.getResponsiveFontSize(context, 16),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-
-              // 🟡 New small button
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RecommendationPageOutlet(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                tooltip: 'Go to Recommendation',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.green[300]!, width: 1),
-            ),
-            child: Text(
-              "🏆 ${topOutlet['name']}: RM${(topSales / 1000).toStringAsFixed(2)}k (${gap.toStringAsFixed(0)}% higher than lowest)",
-              style: TextStyle(
-                fontSize: UIUtils.getResponsiveFontSize(context, 13),
-                color: Colors.green[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.25,
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: Colors.black.withOpacity(0.5),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final outletName =
-                          outletData[groupIndex]['name'] as String;
-                      final isTop = outletData[groupIndex]['isTop'] as bool;
-                      return BarTooltipItem(
-                        '$outletName\nRM${(rod.toY).toStringAsFixed(2)}\n${isTop ? "🔥 Top 3" : "📉 Bottom 3"}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (topSales / 500).ceil() * 500,
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(1)}k',
-                          style: TextStyle(
-                            fontSize: UIUtils.getResponsiveFontSize(
-                              context,
-                              11,
-                            ),
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < outletData.length) {
-                          final name = outletData[index]['name'] as String;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Transform.rotate(
-                              angle: -0.5,
-                              child: Text(
-                                name,
-                                style: TextStyle(
-                                  fontSize: UIUtils.getResponsiveFontSize(
-                                    context,
-                                    9,
-                                  ),
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(
-                  outletData.length,
-                  (index) => BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: outletData[index]['sales'] as double,
-                        color: outletData[index]['color'] as Color,
-                        width: 30,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+          )
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      setState(() {
+        _weekdayError =
+            'Failed to load dashboard (${response.statusCode}): ${response.body}';
+        _isLoadingWeekday = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _weekdayError = 'Error loading dashboard: $e';
+      _isLoadingWeekday = false;
+    });
   }
 }
+
+// --- Optional: Auto-refresh check every few minutes ---
+bool _needsWeekdayRefresh() {
+  if (_weekdayUrlFetchTime == null) return false;
+  final timeSinceFetch = DateTime.now().difference(_weekdayUrlFetchTime!);
+  return timeSinceFetch.inMinutes >= 4;
+}
+
+// --- Build Weekday vs Weekend QuickSight Dashboard ---
+Widget _buildWeekdayVsWeekendChart() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔹 Title Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.purple[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Weekday vs Weekend Sales',
+                  style: TextStyle(
+                    fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecommendationPageWeekly(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: 'Go to Recommendation',
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // 🔹 Dashboard content inside frame
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.35,
+          child: Builder(
+            builder: (context) {
+              if (_weekdayEmbedUrl == null &&
+                  !_isLoadingWeekday &&
+                  _weekdayError == null) {
+                // Initial state - show button
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.bar_chart_rounded,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'View performance comparison by day type',
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _fetchWeekdayEmbedUrl,
+                        icon: const Icon(Icons.show_chart),
+                        label: const Text('Load Dashboard'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_isLoadingWeekday) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.purple[600]!),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading dashboard...',
+                        style: TextStyle(
+                            color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This may take a few seconds',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_weekdayError != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 40, color: Colors.red[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to Load Dashboard',
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _weekdayError!,
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _weekdayError = null;
+                                  _weekdayEmbedUrl = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text('Cancel'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: _fetchWeekdayEmbedUrl,
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (_weekdayEmbedUrl != null && _weekdayController != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: WebViewWidget(
+                    controller: _weekdayController!,
+                  ),
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+ 
+
+// --- State variables for QuickSight Promo vs Non-Promo ---
+String? _promoEmbedUrl;
+bool _isLoadingPromo = false;
+String? _promoError;
+WebViewController? _promoController;
+DateTime? _promoUrlFetchTime;
+
+// --- Fetch QuickSight Embed URL for Promo vs Non-Promo ---
+Future<void> _fetchPromoEmbedUrl() async {
+  setState(() {
+    _isLoadingPromo = true;
+    _promoError = null;
+  });
+
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=promo',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
+
+      setState(() {
+        _promoEmbedUrl = embedUrl;
+        _promoUrlFetchTime = DateTime.now();
+        _isLoadingPromo = false;
+
+        _promoController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.white)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                print('Promo dashboard started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('Promo dashboard finished loading');
+              },
+              onWebResourceError: (WebResourceError error) {
+                print('Promo dashboard error: ${error.description}');
+                if (error.description.contains('401') ||
+                    error.description.contains('403') ||
+                    error.description.contains('authorization')) {
+                  setState(() {
+                    _promoError =
+                        'Session expired. Please reload the dashboard.';
+                    _promoEmbedUrl = null;
+                  });
+                }
+              },
+            ),
+          )
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      setState(() {
+        _promoError =
+            'Failed to load dashboard (${response.statusCode}): ${response.body}';
+        _isLoadingPromo = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _promoError = 'Error loading dashboard: $e';
+      _isLoadingPromo = false;
+    });
+  }
+}
+
+// --- Optional: Auto-refresh check ---
+bool _needsPromoRefresh() {
+  if (_promoUrlFetchTime == null) return false;
+  final timeSinceFetch = DateTime.now().difference(_promoUrlFetchTime!);
+  return timeSinceFetch.inMinutes >= 4;
+}
+
+// --- Build Promo vs Non-Promo Dashboard ---
+Widget _buildPromoVsNonPromoChart() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔹 Header Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.local_offer, color: Colors.orange[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Promo Effectiveness',
+                  style: TextStyle(
+                    fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecommendationPagePromo(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: 'Go to Recommendation',
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // 🔹 Dashboard Frame
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.35,
+          child: Builder(
+            builder: (context) {
+              if (_promoEmbedUrl == null &&
+                  !_isLoadingPromo &&
+                  _promoError == null) {
+                // Initial state - show button
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.insights_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'View promotion impact on sales',
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _fetchPromoEmbedUrl,
+                        icon: const Icon(Icons.show_chart),
+                        label: const Text('Load Dashboard'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_isLoadingPromo) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.orange[600]!),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading dashboard...',
+                        style: TextStyle(
+                            color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This may take a few seconds',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_promoError != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 40, color: Colors.red[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to Load Dashboard',
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _promoError!,
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _promoError = null;
+                                  _promoEmbedUrl = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text('Cancel'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: _fetchPromoEmbedUrl,
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (_promoEmbedUrl != null && _promoController != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: WebViewWidget(
+                    controller: _promoController!,
+                  ),
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+
+  String? _productEmbedUrl;
+bool _isLoadingProduct = false;
+String? _productError;
+WebViewController? _productController;
+
+Future<void> _fetchProductEmbedUrl() async {
+  setState(() {
+    _isLoadingProduct = true;
+    _productError = null;
+  });
+
+  try {
+    final response = await http.get(
+      Uri.parse('https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=product'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
+
+      setState(() {
+        _productEmbedUrl = embedUrl;
+        _productController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      throw Exception('Failed to load embed URL');
+    }
+  } catch (e) {
+    setState(() {
+      _productError = e.toString();
+    });
+  } finally {
+    setState(() {
+      _isLoadingProduct = false;
+    });
+  }
+}
+
+Widget _buildProductSalesChart() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔹 Title Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.shopping_basket,
+                    color: Colors.brown[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Product Sales Performance',
+                  style: TextStyle(
+                    fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecommendationPageProduct(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: 'Go to Recommendation',
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // 🔹 Dashboard content (WebView)
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.35,
+          child: Builder(
+            builder: (context) {
+              if (_productEmbedUrl == null &&
+                  !_isLoadingProduct &&
+                  _productError == null) {
+                // Initial state - show button
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.shopping_cart_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'View detailed sales performance by product',
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _fetchProductEmbedUrl,
+                        icon: const Icon(Icons.show_chart),
+                        label: const Text('Load Dashboard'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.brown[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_isLoadingProduct) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.brown[600]!),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading dashboard...',
+                        style: TextStyle(
+                            color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This may take a few seconds',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_productError != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 40, color: Colors.red[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to Load Dashboard',
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _productError!,
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _productError = null;
+                                  _productEmbedUrl = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text('Cancel'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: _fetchProductEmbedUrl,
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.brown[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (_productEmbedUrl != null && _productController != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: WebViewWidget(
+                    controller: _productController!,
+                  ),
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+  // --- State variables for QuickSight Outlet Performance ---
+String? _outletEmbedUrl;
+bool _isLoadingOutlet = false;
+String? _outletError;
+WebViewController? _outletController;
+DateTime? _outletUrlFetchTime;
+
+// --- Fetch QuickSight Embed URL for Outlet Performance ---
+Future<void> _fetchOutletEmbedUrl() async {
+  setState(() {
+    _isLoadingOutlet = true;
+    _outletError = null;
+  });
+
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=outlet',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
+
+      setState(() {
+        _outletEmbedUrl = embedUrl;
+        _outletUrlFetchTime = DateTime.now();
+        _isLoadingOutlet = false;
+
+        _outletController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.white)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                print('Outlet Performance page started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('Outlet Performance page finished loading');
+              },
+              onWebResourceError: (WebResourceError error) {
+                print('Outlet Performance error: ${error.description}');
+                if (error.description.contains('401') ||
+                    error.description.contains('403') ||
+                    error.description.contains('authorization')) {
+                  setState(() {
+                    _outletError =
+                        'Session expired. Please reload the dashboard.';
+                    _outletEmbedUrl = null;
+                  });
+                }
+              },
+            ),
+          )
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      setState(() {
+        _outletError =
+            'Failed to load dashboard (${response.statusCode}): ${response.body}';
+        _isLoadingOutlet = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _outletError = 'Error loading dashboard: $e';
+      _isLoadingOutlet = false;
+    });
+  }
+}
+
+// --- Optional: Refresh check for Outlet Dashboard ---
+bool _needsOutletRefresh() {
+  if (_outletUrlFetchTime == null) return false;
+  final timeSinceFetch = DateTime.now().difference(_outletUrlFetchTime!);
+  return timeSinceFetch.inMinutes >= 4; // refresh before 5 min expiry
+}
+
+// --- Build Outlet Performance QuickSight Dashboard ---
+Widget _buildOutletPerformanceChart() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔹 Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.store, color: Colors.green[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Outlet Performance',
+                  style: TextStyle(
+                    fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecommendationPageOutlet(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: 'Go to Recommendation',
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // 🔹 QuickSight Dashboard Area
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.35,
+          child: Builder(
+            builder: (context) {
+              if (_outletEmbedUrl == null &&
+                  !_isLoadingOutlet &&
+                  _outletError == null) {
+                // Initial state
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.bar_chart_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'View performance of top & bottom outlets',
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: _fetchOutletEmbedUrl,
+                        icon: const Icon(Icons.storefront),
+                        label: const Text('Load Dashboard'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_isLoadingOutlet) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.green[600]!),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading dashboard...',
+                        style: TextStyle(
+                            color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This may take a few seconds',
+                        style: TextStyle(
+                            color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (_outletError != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 40, color: Colors.red[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to Load Dashboard',
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _outletError!,
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _outletError = null;
+                                  _outletEmbedUrl = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text('Cancel'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: _fetchOutletEmbedUrl,
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (_outletEmbedUrl != null && _outletController != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: WebViewWidget(
+                    controller: _outletController!,
+                  ),
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+}
+
 
 class ChartData {
   final String period;
