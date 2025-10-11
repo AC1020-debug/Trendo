@@ -27,12 +27,23 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final PageController _pageController = PageController();
   int _currentChartPage = 0;
+
+  Map<String, dynamic>? _chart1Insights; // Rice predictions
+  Map<String, dynamic>? _chart2Insights; // Weekly sales
+  Map<String, dynamic>? _chart3Insights; // Promotion analysis
+  bool _isLoadingInsights = false;
+  String? _insightsError;
   
   @override
   void initState() {
     super.initState();
     // Auto-load the QuickSight dashboard when page opens
     _fetchRiceSalesEmbedUrl();
+    
+    // Only load insights for Rice product
+    if (widget.product.name.toLowerCase().contains('rice')) {
+      _fetchInsights('predict_rice', 0);
+    }
   }
 
   @override
@@ -264,6 +275,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               setState(() {
                 _currentChartPage = index;
               });
+              
+              // Only fetch insights for Rice product
+              if (widget.product.name.toLowerCase().contains('rice')) {
+                if (index == 0 && _chart1Insights == null) {
+                  _fetchInsights('predict_rice', 0);
+                } else if (index == 1 && _chart2Insights == null) {
+                  _fetchInsights('rice_weekly_sales', 1);
+                } else if (index == 2 && _chart3Insights == null) {
+                  _fetchInsights('rice_promotion_analysis', 2);
+                }
+              }
             },
             children: [
               Padding(
@@ -376,6 +398,46 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       setState(() {
         _riceSalesError = 'Error loading dashboard: $e';
         _isLoadingRiceSales = false;
+      });
+    }
+  }
+
+  // Add this entire method after _fetchRiceSalesEmbedUrl()
+  Future<void> _fetchInsights(String type, int chartIndex) async {
+    setState(() {
+      _isLoadingInsights = true;
+      _insightsError = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/insights?type=$type',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          if (chartIndex == 0) {
+            _chart1Insights = data;
+          } else if (chartIndex == 1) {
+            _chart2Insights = data;
+          } else if (chartIndex == 2) {
+            _chart3Insights = data;
+          }
+          _isLoadingInsights = false;
+        });
+      } else {
+        setState(() {
+          _insightsError = 'Failed to load insights (${response.statusCode})';
+          _isLoadingInsights = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _insightsError = 'Error loading insights: $e';
+        _isLoadingInsights = false;
       });
     }
   }
@@ -1105,6 +1167,112 @@ Widget _buildRiceSalesContent() {
   }
 
   Widget _buildCriticalInfoCard(BuildContext context) {
+    // Check if this is Rice product - only Rice gets dynamic insights
+    bool isRiceProduct = widget.product.name.toLowerCase().contains('rice');
+    
+    if (isRiceProduct) {
+      // Rice product - show dynamic insights based on chart
+      return _buildDynamicInsightsCard(context);
+    } else {
+      // Other products - show original hardcoded recommendation
+      return _buildOriginalRecommendationCard(context);
+    }
+  }
+
+  // New method for Rice - dynamic insights
+  Widget _buildDynamicInsightsCard(BuildContext context) {
+    // Get current insights based on page
+    Map<String, dynamic>? currentInsights;
+    String title = 'AI Insights';
+    
+    if (_currentChartPage == 0) {
+      currentInsights = _chart1Insights;
+      title = 'Rice Sales Predictions';
+    } else if (_currentChartPage == 1) {
+      currentInsights = _chart2Insights;
+      title = 'Weekly Sales Analysis';
+    } else if (_currentChartPage == 2) {
+      currentInsights = _chart3Insights;
+      title = 'Promotion Impact Analysis';
+    }
+
+    return Container(
+      padding: ui.UIUtils.getResponsivePadding(context),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: ui.UIUtils.getCardBorderRadius(),
+        border: Border.all(
+          color: Colors.blue[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                color: Colors.blue[600],
+                size: ui.UIUtils.getResponsiveFontSize(context, 24),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Show loading state
+          if (_isLoadingInsights)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                ),
+              ),
+            )
+          
+          // Show error state
+          else if (_insightsError != null)
+            Text(
+              _insightsError!,
+              style: TextStyle(
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
+                color: Colors.red[700],
+              ),
+            )
+          
+          // Show insights content
+          else if (currentInsights != null)
+            _buildInsightsContent(context, currentInsights)
+          
+          // Show placeholder
+          else
+            Text(
+              'Loading insights...',
+              style: TextStyle(
+                fontSize: ui.UIUtils.getResponsiveFontSize(context, 14),
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Original method for other products - unchanged behavior
+  Widget _buildOriginalRecommendationCard(BuildContext context) {
     // Use StockAnalyzer to determine risk level
     stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
       widget.product.daysWithoutStock,
@@ -1201,6 +1369,666 @@ Widget _buildRiceSalesContent() {
         ],
       ),
     );
+  }
+
+  Widget _buildInsightsContent(BuildContext context, Map<String, dynamic> insights) {
+    final result = insights['result'] as Map<String, dynamic>?;
+    if (result == null) return const SizedBox();
+
+    // Route to appropriate renderer based on current chart page
+    if (_currentChartPage == 0) {
+      return _buildChart1Content(context, result); // Rice Predictions
+    } else if (_currentChartPage == 1) {
+      return _buildChart2Content(context, result); // Weekly Sales
+    } else if (_currentChartPage == 2) {
+      return _buildChart3Content(context, result); // Promotion Analysis
+    }
+    
+    return const SizedBox();
+  }
+
+  // Chart 1: Rice Predictions Content
+  Widget _buildChart1Content(BuildContext context, Map<String, dynamic> result) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Analysis Period
+        if (result['analysis_period'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Analysis Period', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['analysis_period'] as Map<String, dynamic>, context),
+        ],
+        
+        // Sales Summary
+        if (result['sales_summary'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Sales Summary', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['sales_summary'] as Map<String, dynamic>, context),
+        ],
+        
+        // Quantity Summary
+        if (result['quantity_summary'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Quantity Summary', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['quantity_summary'] as Map<String, dynamic>, context),
+        ],
+        
+        // Stock Recommendations Summary
+        if (result['stock_recommendations'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Stock Recommendations', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['stock_recommendations'] as Map<String, dynamic>, context),
+        ],
+        
+        // Key Insights
+        if (result['key_insights'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Key Insights', context),
+          const SizedBox(height: 6),
+          ..._buildBulletList(result['key_insights'] as List, context),
+        ],
+        
+        // Recommendations
+        if (result['recommendations'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Next Actions', context),
+          const SizedBox(height: 6),
+          _buildRecommendationsContent(context, result['recommendations']),
+        ],
+      ],
+    );
+  }
+
+  // Chart 2: Weekly Sales Content
+  Widget _buildChart2Content(BuildContext context, Map<String, dynamic> result) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Analysis Summary
+        if (result['analysis_summary'] != null) ...[
+          _buildSectionTitle('Analysis Summary', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['analysis_summary'] as Map<String, dynamic>, context),
+        ],
+        
+        // Weekly Performance
+        if (result['weekly_performance'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Weekly Performance', context),
+          const SizedBox(height: 6),
+          ..._buildNestedMapContent(result['weekly_performance'] as Map<String, dynamic>, context),
+        ],
+        
+        // Performance Metrics
+        if (result['performance_metrics'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Performance Metrics', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['performance_metrics'] as Map<String, dynamic>, context),
+        ],
+        
+        // Outlet Analysis Summary
+        if (result['outlet_analysis'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Outlet Analysis', context),
+          const SizedBox(height: 6),
+          _buildInfoRow('Total Outlets', '${(result['outlet_analysis'] as List).length}', context),
+          const SizedBox(height: 6),
+          ..._buildTopOutlets(result['outlet_analysis'] as List, context),
+        ],
+        
+        // Key Insights
+        if (result['key_insights'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Key Insights', context),
+          const SizedBox(height: 6),
+          ..._buildBulletList(result['key_insights'] as List, context),
+        ],
+        
+        // Recommendations
+        if (result['recommendations'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Recommendations', context),
+          const SizedBox(height: 6),
+          _buildRecommendationsContent(context, result['recommendations']),
+        ],
+      ],
+    );
+  }
+
+  // Chart 3: Promotion Analysis Content
+  Widget _buildChart3Content(BuildContext context, Map<String, dynamic> result) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Analysis Summary
+        if (result['analysis_summary'] != null) ...[
+          _buildSectionTitle('Analysis Summary', context),
+          const SizedBox(height: 6),
+          ..._buildMapContent(result['analysis_summary'] as Map<String, dynamic>, context),
+        ],
+        
+        // Promotion Campaigns Summary
+        if (result['promotion_campaigns'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Promotion Campaigns', context),
+          const SizedBox(height: 6),
+          _buildInfoRow('Total Campaigns', '${(result['promotion_campaigns'] as List).length}', context),
+          const SizedBox(height: 6),
+          ..._buildPromotionCampaigns(result['promotion_campaigns'] as List, context),
+        ],
+        
+        // Outlet Performance Summary
+        if (result['outlet_performance'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Outlet Performance', context),
+          const SizedBox(height: 6),
+          _buildInfoRow('Total Outlets', '${(result['outlet_performance'] as List).length}', context),
+          const SizedBox(height: 6),
+          ..._buildTopPerformingOutlets(result['outlet_performance'] as List, context),
+        ],
+        
+        // Key Insights
+        if (result['key_insights'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Key Insights', context),
+          const SizedBox(height: 6),
+          ..._buildBulletList(result['key_insights'] as List, context),
+        ],
+        
+        // Recommendations
+        if (result['recommendations'] != null) ...[
+          const SizedBox(height: 12),
+          _buildSectionTitle('Recommendations', context),
+          const SizedBox(height: 6),
+          if (result['recommendations'] is List)
+            ..._buildBulletList(result['recommendations'] as List, context)
+          else
+            _buildRecommendationsContent(context, result['recommendations']),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRecommendations(BuildContext context, dynamic recommendations) {
+    List<Widget> widgets = [];
+
+    if (recommendations is Map<String, dynamic>) {
+      // Handle nested recommendations (like in chart 1 and 2)
+      recommendations.forEach((key, value) {
+        if (value is List) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatKey(key),
+                    style: TextStyle(
+                      fontSize: ui.UIUtils.getResponsiveFontSize(context, 12),
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ...value.map((rec) => Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '•',
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            rec.toString(),
+                            style: TextStyle(
+                              fontSize: ui.UIUtils.getResponsiveFontSize(context, 12),
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )).toList(),
+                ],
+              ),
+            ),
+          );
+        }
+      });
+    } else if (recommendations is List) {
+      // Handle simple list recommendations (like in chart 3)
+      widgets.addAll(
+        recommendations.map((rec) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.arrow_right,
+                color: Colors.blue[600],
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  rec.toString(),
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 13),
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )).toList(),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  String _formatKey(String key) {
+    // Convert snake_case to Title Case
+    return key
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+  }
+
+  // Helper: Build section title with underline
+  Widget _buildSectionTitle(String title, BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.blue[300]!, width: 1.5),
+        ),
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.blue[800],
+        ),
+      ),
+    );
+  }
+
+  // Helper: Build info row (label: value)
+  Widget _buildInfoRow(String label, String value, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper: Build content from Map
+  List<Widget> _buildMapContent(Map<String, dynamic> map, BuildContext context) {
+    List<Widget> widgets = [];
+    
+    map.forEach((key, value) {
+      String displayValue = _formatValue(key, value);
+      
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4, left: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  _formatKey(key),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  displayValue,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[800],
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+    
+    return widgets;
+  }
+
+  // Helper: Build nested map content (for weekly_performance)
+  List<Widget> _buildNestedMapContent(Map<String, dynamic> map, BuildContext context) {
+    List<Widget> widgets = [];
+    
+    map.forEach((key, value) {
+      if (value is Map<String, dynamic>) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6, left: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatKey(key),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ..._buildMapContent(value, context).map((w) => Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: w,
+                )),
+              ],
+            ),
+          ),
+        );
+      } else {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4, left: 8),
+            child: Text(
+              '${_formatKey(key)}: ${_formatValue(key, value)}',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        );
+      }
+    });
+    
+    return widgets;
+  }
+
+  // Helper: Build bullet list
+  List<Widget> _buildBulletList(List items, BuildContext context, {Color? color}) {
+    return items.map((item) => Padding(
+      padding: const EdgeInsets.only(bottom: 6, left: 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 5),
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: color ?? Colors.blue[600],
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              item.toString(),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    )).toList();
+  }
+
+  // Helper: Build recommendations (handles both Map and List)
+  Widget _buildRecommendationsContent(BuildContext context, dynamic recommendations) {
+    List<Widget> widgets = [];
+
+    if (recommendations is Map<String, dynamic>) {
+      recommendations.forEach((key, value) {
+        if (value is List) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatKey(key),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ..._buildBulletList(value, context),
+                ],
+              ),
+            ),
+          );
+        }
+      });
+    } else if (recommendations is List) {
+      widgets.addAll(_buildBulletList(recommendations, context));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  // Helper: Build top outlets (for chart 2)
+  List<Widget> _buildTopOutlets(List outlets, BuildContext context) {
+    // Sort by total_sales and take top 3
+    var sortedOutlets = List.from(outlets);
+    sortedOutlets.sort((a, b) => (b['total_sales'] ?? 0).compareTo(a['total_sales'] ?? 0));
+    var topOutlets = sortedOutlets.take(3).toList();
+    
+    return topOutlets.asMap().entries.map((entry) {
+      int index = entry.key;
+      var outlet = entry.value;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6, left: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: index == 0 ? Colors.amber : index == 1 ? Colors.grey[400] : Colors.brown[300],
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${outlet['outlet']} - RM${(outlet['total_sales'] ?? 0).toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  // Helper: Build promotion campaigns (for chart 3)
+  List<Widget> _buildPromotionCampaigns(List campaigns, BuildContext context) {
+    return campaigns.map((campaign) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8, left: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              campaign['promotion_name'] ?? 'Unknown',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${campaign['start_date']} to ${campaign['end_date']} (${campaign['duration_days']} days)',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            if (campaign['description'] != null)
+              Text(
+                campaign['description'],
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  // Helper: Build top performing outlets (for chart 3)
+  List<Widget> _buildTopPerformingOutlets(List outlets, BuildContext context) {
+    // Sort by promotion_lift_percentage and take top 3
+    var sortedOutlets = List.from(outlets);
+    sortedOutlets.sort((a, b) => (b['promotion_lift_percentage'] ?? 0).compareTo(a['promotion_lift_percentage'] ?? 0));
+    var topOutlets = sortedOutlets.take(3).toList();
+    
+    return topOutlets.asMap().entries.map((entry) {
+      int index = entry.key;
+      var outlet = entry.value;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6, left: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: index == 0 ? Colors.amber : index == 1 ? Colors.grey[400] : Colors.brown[300],
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${outlet['outlet']} - ${(outlet['promotion_lift_percentage'] ?? 0).toStringAsFixed(2)}% lift',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  // Helper: Format value based on key
+  String _formatValue(String key, dynamic value) {
+    if (value is num) {
+      String formatted;
+      if (value is double && value % 1 != 0) {
+        formatted = value.toStringAsFixed(2);
+      } else {
+        formatted = value.toString();
+      }
+      
+      // Add RM prefix for monetary values
+      if (key.toLowerCase().contains('sales') || 
+          key.toLowerCase().contains('amount') ||
+          key.toLowerCase().contains('rm')) {
+        return 'RM$formatted';
+      }
+      
+      // Add % suffix for percentages
+      if (key.toLowerCase().contains('percent') || 
+          key.toLowerCase().contains('rate') || 
+          key.toLowerCase().contains('growth') ||
+          key.toLowerCase().contains('lift')) {
+        return '$formatted%';
+      }
+      
+      return formatted;
+    } else if (value is List) {
+      return value.join(', ');
+    }
+    
+    return value.toString();
   }
 }
 
