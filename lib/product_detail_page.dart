@@ -39,6 +39,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.initState();
     // Auto-load the QuickSight dashboard when page opens
     _fetchRiceSalesEmbedUrl();
+    _fetchRiceWeeklySalesEmbedUrl();
+    _fetchRicePromotionEmbedUrl();
+    
     
     // Only load insights for Rice product
     if (widget.product.name.toLowerCase().contains('rice')) {
@@ -52,52 +55,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.dispose();
   }
 
-  // Generate 1-month historical data + 3-day prediction (but keep 6 months for scrolling)
-  // List<FlSpot> get6MonthTrendData() {
-  //   List<FlSpot> spots = [];
-    
-  //   // Base parameters for more natural sales pattern
-  //   double baseValue = 5000; // Average sales around 5000
-  //   double trendSlope = 5; // Gradual upward trend
-    
-  //   // Generate 6 months of data (180 days) with natural patterns
-  //   for (int i = 0; i <= 180; i++) {
-  //     // Base trend (gradual increase)
-  //     double trend = baseValue + (i * trendSlope);
-      
-  //     // Weekly pattern (weekend peaks)
-  //     int dayOfWeek = (i % 7);
-  //     double weeklyPattern = 0;
-  //     if (dayOfWeek == 5 || dayOfWeek == 6) { // Weekend
-  //       weeklyPattern = 800;
-  //     } else {
-  //       weeklyPattern = -200;
-  //     }
-      
-  //     // Monthly seasonality (smooth wave)
-  //     double monthlyWave = 400 * math.sin((i / 30) * 2 * math.pi);
-      
-  //     // Random daily variation (small noise)
-  //     double noise = (math.Random(i).nextDouble() - 0.5) * 300;
-      
-  //     double value = trend + weeklyPattern + monthlyWave + noise;
-  //     spots.add(FlSpot(i.toDouble(), value.clamp(3000, 8000)));
-  //   }
-
-  //   // Add prediction for next 3 days
-  //   double lastValue = spots.last.y;
-  //   double recentTrend = (spots.last.y - spots[spots.length - 7].y) / 7;
-
-  //   for (int i = 1; i <= 3; i++) {
-  //     int futureDayOfWeek = ((180 + i) % 7);
-  //     double weekendBoost = (futureDayOfWeek == 5 || futureDayOfWeek == 6) ? 600 : 0;
-  //     double predictedValue = lastValue + (recentTrend * i) + weekendBoost + 
-  //                             ((math.Random(180 + i).nextDouble() - 0.5) * 200);
-  //     spots.add(FlSpot(180.0 + i, predictedValue.clamp(3000, 8000)));
-  //   }
-
-  //   return spots;
-  // }
 
   // Generate weekday vs weekend sales data for PAST WEEK ONLY
   List<FlSpot> getWeekdaySalesData() {
@@ -268,7 +225,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return Column(
       children: [
         SizedBox(
-          height: 340,
+          height: 640,
           child: PageView(
             controller: _pageController,
             onPageChanged: (index) {
@@ -294,11 +251,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildChartWeekdayWeekend(context),
+                child: _buildChartWeekdayWeekend(),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildChartPromotionComparison(context),
+                child: _buildChartRicePromotion(),
               ),
             ],
           ),
@@ -592,579 +549,886 @@ Widget _buildRiceSalesContent() {
 }
 
 
-  Widget _buildChartWeekdayWeekend(BuildContext context) {
-    List<FlSpot> spots = getWeekdaySalesData();
-    DateTime startDate = DateTime.now().subtract(Duration(days: 6));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: ui.UIUtils.getCardBorderRadius(),
-        boxShadow: ui.UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Past Week Sales Pattern',
-            style: TextStyle(
-              fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.green[600],
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Weekend',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.blue[400],
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Weekday',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: 6,
-                lineTouchData: LineTouchData(
-                  enabled: true,
-                  touchTooltipData: LineTouchTooltipData(
-                    tooltipBgColor: Colors.black87,
-                    tooltipRoundedRadius: 8,
-                    tooltipPadding: EdgeInsets.all(8),
-                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        return LineTooltipItem(
-                          '${spot.y.toStringAsFixed(2)}',
-                          TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 1000,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
-                  },
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 45,
-                      interval: 1000,
-                      getTitlesWidget: (value, meta) => Text(
-                        '${(value / 1000).toStringAsFixed(1)}k',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                      ),
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        if (value < 0 || value >= 7) return const SizedBox();
-                        DateTime day = startDate.add(
-                          Duration(days: value.toInt()),
-                        );
+// State for QuickSight embed URL (Weekly Rice Sales)
+String? _riceWeeklySalesEmbedUrl;
+bool _isLoadingRiceWeeklySales = false;
+String? _riceWeeklySalesError;
+WebViewController? _riceWeeklySalesController;
+DateTime? _riceWeeklySalesUrlFetchTime;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            DateFormat('E\nd').format(day),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                    left: BorderSide(color: Colors.grey[300]!, width: 1),
-                  ),
-                ),
-                minY: 2000,
-                maxY: 7000,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: Colors.purple[600],
-                    barWidth: 2.5,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        DateTime day = startDate.add(Duration(days: index));
-                        bool isWeekend =
-                            day.weekday == DateTime.saturday ||
-                            day.weekday == DateTime.sunday;
 
-                        Color dotColor = isWeekend
-                            ? Colors.green[600]!
-                            : Colors.blue[400]!;
-                        double radius = isWeekend ? 4 : 3;
+// Fetch QuickSight embed URL for weekly sales
+Future<void> _fetchRiceWeeklySalesEmbedUrl() async {
+  setState(() {
+    _isLoadingRiceWeeklySales = true;
+    _riceWeeklySalesError = null;
+  });
 
-                        return FlDotCirclePainter(
-                          radius: radius,
-                          color: dotColor,
-                          strokeWidth: 1.5,
-                          strokeColor: Colors.white,
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.purple[600]!.withOpacity(0.2),
-                          Colors.purple[600]!.withOpacity(0.05),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=rice_weekly_sales',
       ),
     );
-  }
-  
-  Widget _buildChartPromotionComparison(BuildContext context) {
-    // Generate continuous sales data with color segments
-    List<LineChartBarData> getLineChartBarData() {
-      List<LineChartBarData> segments = [];
-      
-      // Helper to create spots for a range
-      List<FlSpot> createSpots(int start, int end) {
-        List<FlSpot> spots = [];
-        double baseValue = 4000;
-        
-        for (int i = start; i <= end; i++) {
-          double value = baseValue;
-          
-          // Define promotion periods
-          bool isPromo1 = i >= 30 && i <= 50;
-          bool isPromo2 = i >= 90 && i <= 110;
-          bool isPromo3 = i >= 140 && i <= 160;
-          
-          // Base trend
-          double trend = i * 4;
-          
-          // Weekly pattern
-          int dayOfWeek = (i % 7);
-          double weeklyPattern = (dayOfWeek == 5 || dayOfWeek == 6) ? 400 : -100;
-          
-          // Promotion boost - realistic increases
-          double promoBoost = 0;
-          if (isPromo1) {
-            promoBoost = 1200 + ((i - 30) * 20);
-          } else if (isPromo2) {
-            promoBoost = 700 + ((i - 90) * 12);
-          } else if (isPromo3) {
-            promoBoost = 300 + ((i - 140) * 8);
-          }
-          
-          // Random noise
-          double noise = (math.Random(i).nextDouble() - 0.5) * 200;
-          
-          value = value + trend + weeklyPattern + promoBoost + noise;
-          spots.add(FlSpot(i.toDouble(), value.clamp(3000, 9000)));
-        }
-        
-        return spots;
-      }
-      
-      // Normal period 1: 0-29
-      segments.add(LineChartBarData(
-        spots: createSpots(0, 30),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.blue[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.blue[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Promo 1: 30-50 (Green)
-      segments.add(LineChartBarData(
-        spots: createSpots(30, 50),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.green[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.green[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Normal period 2: 50-90
-      segments.add(LineChartBarData(
-        spots: createSpots(50, 90),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.blue[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.blue[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Promo 2: 90-110 (Green)
-      segments.add(LineChartBarData(
-        spots: createSpots(90, 110),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.green[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.green[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Normal period 3: 110-140
-      segments.add(LineChartBarData(
-        spots: createSpots(110, 140),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.blue[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.blue[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Promo 3: 140-160 (Green)
-      segments.add(LineChartBarData(
-        spots: createSpots(140, 160),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.green[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.green[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      // Normal period 4: 160-180
-      segments.add(LineChartBarData(
-        spots: createSpots(160, 180),
-        isCurved: true,
-        curveSmoothness: 0.4,
-        color: Colors.blue[600],
-        barWidth: 3,
-        dotData: FlDotData(show: false),
-        belowBarData: BarAreaData(
-          show: true,
-          color: Colors.blue[600]!.withOpacity(0.1),
-        ),
-      ));
-      
-      return segments;
-    }
 
-    List<LineChartBarData> lineSegments = getLineChartBarData();
-    
-    // Get all spots for tooltip handling
-    List<FlSpot> getAllSpots() {
-      List<FlSpot> allSpots = [];
-      for (var segment in lineSegments) {
-        allSpots.addAll(segment.spots);
-      }
-      return allSpots;
-    }
-    
-    DateTime now = DateTime.now();
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: ui.UIUtils.getCardBorderRadius(),
-        boxShadow: ui.UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Promotion Impact Analysis',
-            style: TextStyle(
-              fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
+      setState(() {
+        _riceWeeklySalesEmbedUrl = embedUrl;
+        _riceWeeklySalesUrlFetchTime = DateTime.now();
+        _isLoadingRiceWeeklySales = false;
+
+        _riceWeeklySalesController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.white)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                print('QuickSight Weekly Sales started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('QuickSight Weekly Sales finished loading');
+              },
+              onWebResourceError: (WebResourceError error) {
+                print('QuickSight Weekly Sales error: ${error.description}');
+                if (error.description.contains('401') ||
+                    error.description.contains('403') ||
+                    error.description.contains('authorization')) {
+                  setState(() {
+                    _riceWeeklySalesError = 'Session expired. Please reload the dashboard.';
+                    _riceWeeklySalesEmbedUrl = null;
+                  });
+                }
+              },
             ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(width: 16, height: 3, color: Colors.blue[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Normal Sales',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 16,
-                    height: 3,
-                    color: Colors.green[100]!.withOpacity(0.5),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Promo Period',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(width: 16, height: 3, color: Colors.green[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Promo Sales',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Stack(
+          )
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      setState(() {
+        _riceWeeklySalesError =
+            'Failed to load dashboard (${response.statusCode}): ${response.body}';
+        _isLoadingRiceWeeklySales = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _riceWeeklySalesError = 'Error loading dashboard: $e';
+      _isLoadingRiceWeeklySales = false;
+    });
+  }
+}
+
+// Check if QuickSight URL needs refresh (before 5-min expiry)
+bool _needsRiceWeeklySalesRefresh() {
+  if (_riceWeeklySalesUrlFetchTime == null) return false;
+  final timeSinceFetch = DateTime.now().difference(_riceWeeklySalesUrlFetchTime!);
+  return timeSinceFetch.inMinutes >= 4;
+}
+
+Widget _buildChartWeekdayWeekend() {
+  // Auto refresh if expired
+  if (_riceWeeklySalesEmbedUrl != null && _needsRiceWeeklySalesRefresh()) {
+    Future.microtask(() => _fetchRiceWeeklySalesEmbedUrl());
+  }
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: ui.UIUtils.getCardBorderRadius(),
+      boxShadow: ui.UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                // Sticky Y-axis
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 30,
-                  width: 50,
-                  child: Container(
-                    color: Colors.white,
-                    child: CustomPaint(
-                      painter: YAxisPainter(
-                        minY: 2500,
-                        maxY: 9000,
-                        interval: 1000,
-                      ),
-                    ),
-                  ),
-                ),
-                // Scrollable chart
-                Padding(
-                  padding: const EdgeInsets.only(left: 50),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    reverse: true,
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 3.2,
-                      padding: const EdgeInsets.only(top: 10, bottom: 30, right: 40, left: 20),
-                      child: Stack(
-                        children: [
-                          // Promotion period highlights with labels
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: PromotionHighlightPainter(
-                                minX: -5,
-                                maxX: 185,
-                                chartWidth: MediaQuery.of(context).size.width * 3.2 - 60,
-                                promotionPeriods: [
-                                  {'start': 30.0, 'end': 50.0, 'label': 'B1F1'},
-                                  {'start': 90.0, 'end': 110.0, 'label': 'Flash'},
-                                  {'start': 140.0, 'end': 160.0, 'label': '20%'},
-                                ],
-                              ),
-                            ),
-                          ),
-                          // Line chart
-                          LineChart(
-                            LineChartData(
-                              minX: -5,
-                              maxX: 185,
-                              lineTouchData: LineTouchData(
-                                enabled: true,
-                                touchTooltipData: LineTouchTooltipData(
-                                  tooltipBgColor: Colors.black87,
-                                  tooltipRoundedRadius: 8,
-                                  tooltipPadding: EdgeInsets.all(8),
-                                  getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                                    return touchedSpots.map((spot) {
-                                      if (spot.x < 0 || spot.x > 180) return null;
-                                      
-                                      DateTime date = now.subtract(
-                                        Duration(days: 180 - spot.x.toInt()),
-                                      );
-                                      String dateStr = DateFormat('MMM d').format(date);
-                                      
-                                      return LineTooltipItem(
-                                        '$dateStr\nRM${(spot.y).toStringAsFixed(0)}',
-                                        TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      );
-                                    }).toList();
-                                  },
-                                ),
-                              ),
-                              gridData: FlGridData(
-                                show: true,
-                                drawVerticalLine: false,
-                                horizontalInterval: 1000,
-                                getDrawingHorizontalLine: (value) {
-                                  return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
-                                },
-                              ),
-                              titlesData: FlTitlesData(
-                                leftTitles: AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                rightTitles: AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                topTitles: AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    interval: 1,
-                                    getTitlesWidget: (value, meta) {
-                                      if (value < 0 || value > 180) return const SizedBox();
-
-                                      DateTime date = now.subtract(
-                                        Duration(days: 180 - value.toInt()),
-                                      );
-
-                                      // Show month labels
-                                      if (value % 30 == 0 || value == 0) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(top: 8, left: 5),
-                                          child: Text(
-                                            DateFormat('MMM').format(date),
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      
-                                      return const SizedBox();
-                                    },
-                                  ),
-                                ),
-                              ),
-                              borderData: FlBorderData(
-                                show: true,
-                                border: Border(
-                                  bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                                  left: BorderSide(color: Colors.grey[300]!, width: 1),
-                                ),
-                              ),
-                              minY: 2500,
-                              maxY: 9000,
-                              lineBarsData: lineSegments,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                Icon(Icons.calendar_today, color: Colors.purple[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Past Week Sales Pattern',
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
                   ),
                 ),
               ],
             ),
+            if (_riceWeeklySalesEmbedUrl != null)
+              IconButton(
+                onPressed: _isLoadingRiceWeeklySales ? null : _fetchRiceWeeklySalesEmbedUrl,
+                icon: Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: _isLoadingRiceWeeklySales ? Colors.grey : Colors.blue[600],
+                ),
+                tooltip: 'Refresh Dashboard',
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _buildRiceWeeklySalesContent(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRiceWeeklySalesContent() {
+  if (_isLoadingRiceWeeklySales) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading dashboard...',
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This may take a few seconds',
+            style: TextStyle(color: Colors.grey[500], fontSize: 12),
           ),
         ],
       ),
     );
   }
+
+  if (_riceWeeklySalesError != null) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to Load Dashboard',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _riceWeeklySalesError!,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchRiceWeeklySalesEmbedUrl,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  if (_riceWeeklySalesEmbedUrl != null && _riceWeeklySalesController != null) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: WebViewWidget(
+        controller: _riceWeeklySalesController!,
+      ),
+    );
+  }
+
+  return const SizedBox.shrink();
+}
+
+// // Fetch QuickSight embed URL for promotion analysis
+// Future<void> _fetchRicePromotionEmbedUrl() async {
+//   setState(() {
+//     _isLoadingRicePromotion = true;
+//     _ricePromotionError = null;
+//   });
+
+//   try {
+//     final response = await http.get(
+//       Uri.parse(
+//         'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=rice_promotion_analysis',
+//       ),
+//     );
+
+//     if (response.statusCode == 200) {
+//       final data = jsonDecode(response.body);
+//       final embedUrl = data['embedUrl'];
+
+//       setState(() {
+//         _ricePromotionEmbedUrl = embedUrl;
+//         _ricePromotionUrlFetchTime = DateTime.now();
+//         _isLoadingRicePromotion = false;
+
+//         _ricePromotionController = WebViewController()
+//           ..setJavaScriptMode(JavaScriptMode.unrestricted)
+//           ..setBackgroundColor(Colors.white)
+//           ..setNavigationDelegate(
+//             NavigationDelegate(
+//               onPageStarted: (String url) {
+//                 print('QuickSight Promotion Analysis started loading: $url');
+//               },
+//               onPageFinished: (String url) {
+//                 print('QuickSight Promotion Analysis finished loading');
+//               },
+//               onWebResourceError: (WebResourceError error) {
+//                 print('QuickSight Promotion Analysis error: ${error.description}');
+//                 if (error.description.contains('401') ||
+//                     error.description.contains('403') ||
+//                     error.description.contains('authorization')) {
+//                   setState(() {
+//                     _ricePromotionError = 'Session expired. Please reload the dashboard.';
+//                     _ricePromotionEmbedUrl = null;
+//                   });
+//                 }
+//               },
+//             ),
+//           )
+//           ..loadRequest(Uri.parse(embedUrl));
+//       });
+//     } else {
+//       setState(() {
+//         _ricePromotionError =
+//             'Failed to load dashboard (${response.statusCode}): ${response.body}';
+//         _isLoadingRicePromotion = false;
+//       });
+//     }
+//   } catch (e) {
+//     setState(() {
+//       _ricePromotionError = 'Error loading dashboard: $e';
+//       _isLoadingRicePromotion = false;
+//     });
+//   }
+// }
+
+// // Check if QuickSight URL needs refresh (before 5-min expiry)
+// bool _needsRiceWeeklySalesRefresh() {
+//   if (_riceWeeklySalesUrlFetchTime == null) return false;
+//   final timeSinceFetch = DateTime.now().difference(_riceWeeklySalesUrlFetchTime!);
+//   return timeSinceFetch.inMinutes >= 4;
+// }
+
+// bool _needsRicePromotionRefresh() {
+//   if (_ricePromotionUrlFetchTime == null) return false;
+//   final timeSinceFetch = DateTime.now().difference(_ricePromotionUrlFetchTime!);
+//   return timeSinceFetch.inMinutes >= 4;
+// }
+
+// State for QuickSight embed URL (Promotion Analysis)
+String? _ricePromotionEmbedUrl;
+bool _isLoadingRicePromotion = false;
+String? _ricePromotionError;
+WebViewController? _ricePromotionController;
+DateTime? _ricePromotionUrlFetchTime;
+
+// Fetch QuickSight embed URL for weekly sales
+Future<void> _fetchRicePromotionEmbedUrl() async {
+  setState(() {
+    _isLoadingRicePromotion = true;
+    _ricePromotionError = null;
+  });
+
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=rice_promotion_analysis',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final embedUrl = data['embedUrl'];
+
+      setState(() {
+        _ricePromotionEmbedUrl = embedUrl;
+        _ricePromotionUrlFetchTime = DateTime.now();
+        _isLoadingRicePromotion = false;
+
+        _ricePromotionController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.white)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                print('QuickSight Rice Promotion started loading: $url');
+              },
+              onPageFinished: (String url) {
+                print('QuickSight Rice Promotion finished loading');
+              },
+              onWebResourceError: (WebResourceError error) {
+                print('QuickSight Rice Promotion error: ${error.description}');
+                if (error.description.contains('401') ||
+                    error.description.contains('403') ||
+                    error.description.contains('authorization')) {
+                  setState(() {
+                    _ricePromotionError = 'Session expired. Please reload the dashboard.';
+                    _ricePromotionEmbedUrl = null;
+                  });
+                }
+              },
+            ),
+          )
+          ..loadRequest(Uri.parse(embedUrl));
+      });
+    } else {
+      setState(() {
+        _ricePromotionError =
+            'Failed to load dashboard (${response.statusCode}): ${response.body}';
+        _isLoadingRicePromotion = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _ricePromotionError = 'Error loading dashboard: $e';
+      _isLoadingRicePromotion = false;
+    });
+  }
+}
+// Check if QuickSight URL needs refresh (before 5-min expiry)
+bool _needsRicePromotionRefresh() {
+  if (_ricePromotionUrlFetchTime == null) return false;
+  final timeSinceFetch = DateTime.now().difference(_ricePromotionUrlFetchTime!);
+  return timeSinceFetch.inMinutes >= 4;
+}
+
+Widget _buildChartRicePromotion() {
+  // Auto refresh if expired
+  if (_ricePromotionEmbedUrl != null && _needsRicePromotionRefresh()) {
+    Future.microtask(() => _fetchRicePromotionEmbedUrl());
+  }
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: ui.UIUtils.getCardBorderRadius(),
+      boxShadow: ui.UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.purple[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Promotion Impact Analysis',
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            if (_ricePromotionEmbedUrl != null)
+              IconButton(
+                onPressed: _isLoadingRicePromotion ? null : _fetchRicePromotionEmbedUrl,
+                icon: Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: _isLoadingRicePromotion ? Colors.grey : Colors.blue[600],
+                ),
+                tooltip: 'Refresh Dashboard',
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _buildRicePromotionContent(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRicePromotionContent() {
+  if (_isLoadingRicePromotion) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading dashboard...',
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This may take a few seconds',
+            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  if (_ricePromotionError != null) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to Load Dashboard',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _ricePromotionError!,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchRicePromotionEmbedUrl,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  if (_ricePromotionEmbedUrl != null && _ricePromotionController != null) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: WebViewWidget(
+        controller: _ricePromotionController!,
+      ),
+    );
+  }
+
+  return const SizedBox.shrink();
+}
+
+
+  
+  // Widget _buildChartPromotionComparison(BuildContext context) {
+  //   // Generate continuous Rice Promotion data with color segments
+  //   List<LineChartBarData> getLineChartBarData() {
+  //     List<LineChartBarData> segments = [];
+      
+  //     // Helper to create spots for a range
+  //     List<FlSpot> createSpots(int start, int end) {
+  //       List<FlSpot> spots = [];
+  //       double baseValue = 4000;
+        
+  //       for (int i = start; i <= end; i++) {
+  //         double value = baseValue;
+          
+  //         // Define promotion periods
+  //         bool isPromo1 = i >= 30 && i <= 50;
+  //         bool isPromo2 = i >= 90 && i <= 110;
+  //         bool isPromo3 = i >= 140 && i <= 160;
+          
+  //         // Base trend
+  //         double trend = i * 4;
+          
+  //         // Weekly pattern
+  //         int dayOfWeek = (i % 7);
+  //         double weeklyPattern = (dayOfWeek == 5 || dayOfWeek == 6) ? 400 : -100;
+          
+  //         // Promotion boost - realistic increases
+  //         double promoBoost = 0;
+  //         if (isPromo1) {
+  //           promoBoost = 1200 + ((i - 30) * 20);
+  //         } else if (isPromo2) {
+  //           promoBoost = 700 + ((i - 90) * 12);
+  //         } else if (isPromo3) {
+  //           promoBoost = 300 + ((i - 140) * 8);
+  //         }
+          
+  //         // Random noise
+  //         double noise = (math.Random(i).nextDouble() - 0.5) * 200;
+          
+  //         value = value + trend + weeklyPattern + promoBoost + noise;
+  //         spots.add(FlSpot(i.toDouble(), value.clamp(3000, 9000)));
+  //       }
+        
+  //       return spots;
+  //     }
+      
+  //     // Normal period 1: 0-29
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(0, 30),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.blue[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.blue[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Promo 1: 30-50 (Green)
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(30, 50),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.green[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.green[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Normal period 2: 50-90
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(50, 90),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.blue[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.blue[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Promo 2: 90-110 (Green)
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(90, 110),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.green[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.green[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Normal period 3: 110-140
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(110, 140),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.blue[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.blue[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Promo 3: 140-160 (Green)
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(140, 160),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.green[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.green[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     // Normal period 4: 160-180
+  //     segments.add(LineChartBarData(
+  //       spots: createSpots(160, 180),
+  //       isCurved: true,
+  //       curveSmoothness: 0.4,
+  //       color: Colors.blue[600],
+  //       barWidth: 3,
+  //       dotData: FlDotData(show: false),
+  //       belowBarData: BarAreaData(
+  //         show: true,
+  //         color: Colors.blue[600]!.withOpacity(0.1),
+  //       ),
+  //     ));
+      
+  //     return segments;
+  //   }
+
+  //   List<LineChartBarData> lineSegments = getLineChartBarData();
+    
+  //   // Get all spots for tooltip handling
+  //   List<FlSpot> getAllSpots() {
+  //     List<FlSpot> allSpots = [];
+  //     for (var segment in lineSegments) {
+  //       allSpots.addAll(segment.spots);
+  //     }
+  //     return allSpots;
+  //   }
+    
+  //   DateTime now = DateTime.now();
+
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: ui.UIUtils.getCardBorderRadius(),
+  //       boxShadow: ui.UIUtils.getCardShadow(),
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Text(
+  //           'Promotion Impact Analysis',
+  //           style: TextStyle(
+  //             fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+  //             fontWeight: FontWeight.bold,
+  //             color: Colors.grey[800],
+  //           ),
+  //         ),
+  //         const SizedBox(height: 4),
+  //         Wrap(
+  //           spacing: 12,
+  //           runSpacing: 4,
+  //           children: [
+  //             Row(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 Container(width: 16, height: 3, color: Colors.blue[600]),
+  //                 const SizedBox(width: 4),
+  //                 Text(
+  //                   'Normal Sales',
+  //                   style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+  //                 ),
+  //               ],
+  //             ),
+  //             Row(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 Container(
+  //                   width: 16,
+  //                   height: 3,
+  //                   color: Colors.green[100]!.withOpacity(0.5),
+  //                 ),
+  //                 const SizedBox(width: 4),
+  //                 Text(
+  //                   'Promo Period',
+  //                   style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+  //                 ),
+  //               ],
+  //             ),
+  //             Row(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 Container(width: 16, height: 3, color: Colors.green[600]),
+  //                 const SizedBox(width: 4),
+  //                 Text(
+  //                   'Promo Sales',
+  //                   style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+  //                 ),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 16),
+  //         Expanded(
+  //           child: Stack(
+  //             children: [
+  //               // Sticky Y-axis
+  //               Positioned(
+  //                 left: 0,
+  //                 top: 0,
+  //                 bottom: 30,
+  //                 width: 50,
+  //                 child: Container(
+  //                   color: Colors.white,
+  //                   child: CustomPaint(
+  //                     painter: YAxisPainter(
+  //                       minY: 2500,
+  //                       maxY: 9000,
+  //                       interval: 1000,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               // Scrollable chart
+  //               Padding(
+  //                 padding: const EdgeInsets.only(left: 50),
+  //                 child: SingleChildScrollView(
+  //                   scrollDirection: Axis.horizontal,
+  //                   reverse: true,
+  //                   child: Container(
+  //                     width: MediaQuery.of(context).size.width * 3.2,
+  //                     padding: const EdgeInsets.only(top: 10, bottom: 30, right: 40, left: 20),
+  //                     child: Stack(
+  //                       children: [
+  //                         // Promotion period highlights with labels
+  //                         Positioned.fill(
+  //                           child: CustomPaint(
+  //                             painter: PromotionHighlightPainter(
+  //                               minX: -5,
+  //                               maxX: 185,
+  //                               chartWidth: MediaQuery.of(context).size.width * 3.2 - 60,
+  //                               promotionPeriods: [
+  //                                 {'start': 30.0, 'end': 50.0, 'label': 'B1F1'},
+  //                                 {'start': 90.0, 'end': 110.0, 'label': 'Flash'},
+  //                                 {'start': 140.0, 'end': 160.0, 'label': '20%'},
+  //                               ],
+  //                             ),
+  //                           ),
+  //                         ),
+  //                         // Line chart
+  //                         LineChart(
+  //                           LineChartData(
+  //                             minX: -5,
+  //                             maxX: 185,
+  //                             lineTouchData: LineTouchData(
+  //                               enabled: true,
+  //                               touchTooltipData: LineTouchTooltipData(
+  //                                 tooltipBgColor: Colors.black87,
+  //                                 tooltipRoundedRadius: 8,
+  //                                 tooltipPadding: EdgeInsets.all(8),
+  //                                 getTooltipItems: (List<LineBarSpot> touchedSpots) {
+  //                                   return touchedSpots.map((spot) {
+  //                                     if (spot.x < 0 || spot.x > 180) return null;
+                                      
+  //                                     DateTime date = now.subtract(
+  //                                       Duration(days: 180 - spot.x.toInt()),
+  //                                     );
+  //                                     String dateStr = DateFormat('MMM d').format(date);
+                                      
+  //                                     return LineTooltipItem(
+  //                                       '$dateStr\nRM${(spot.y).toStringAsFixed(0)}',
+  //                                       TextStyle(
+  //                                         color: Colors.white,
+  //                                         fontWeight: FontWeight.bold,
+  //                                         fontSize: 11,
+  //                                       ),
+  //                                     );
+  //                                   }).toList();
+  //                                 },
+  //                               ),
+  //                             ),
+  //                             gridData: FlGridData(
+  //                               show: true,
+  //                               drawVerticalLine: false,
+  //                               horizontalInterval: 1000,
+  //                               getDrawingHorizontalLine: (value) {
+  //                                 return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
+  //                               },
+  //                             ),
+  //                             titlesData: FlTitlesData(
+  //                               leftTitles: AxisTitles(
+  //                                 sideTitles: SideTitles(showTitles: false),
+  //                               ),
+  //                               rightTitles: AxisTitles(
+  //                                 sideTitles: SideTitles(showTitles: false),
+  //                               ),
+  //                               topTitles: AxisTitles(
+  //                                 sideTitles: SideTitles(showTitles: false),
+  //                               ),
+  //                               bottomTitles: AxisTitles(
+  //                                 sideTitles: SideTitles(
+  //                                   showTitles: true,
+  //                                   interval: 1,
+  //                                   getTitlesWidget: (value, meta) {
+  //                                     if (value < 0 || value > 180) return const SizedBox();
+
+  //                                     DateTime date = now.subtract(
+  //                                       Duration(days: 180 - value.toInt()),
+  //                                     );
+
+  //                                     // Show month labels
+  //                                     if (value % 30 == 0 || value == 0) {
+  //                                       return Padding(
+  //                                         padding: const EdgeInsets.only(top: 8, left: 5),
+  //                                         child: Text(
+  //                                           DateFormat('MMM').format(date),
+  //                                           style: TextStyle(
+  //                                             fontSize: 10,
+  //                                             color: Colors.grey[600],
+  //                                             fontWeight: FontWeight.w500,
+  //                                           ),
+  //                                         ),
+  //                                       );
+  //                                     }
+                                      
+  //                                     return const SizedBox();
+  //                                   },
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                             borderData: FlBorderData(
+  //                               show: true,
+  //                               border: Border(
+  //                                 bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+  //                                 left: BorderSide(color: Colors.grey[300]!, width: 1),
+  //                               ),
+  //                             ),
+  //                             minY: 2500,
+  //                             maxY: 9000,
+  //                             lineBarsData: lineSegments,
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildCriticalInfoCard(BuildContext context) {
     // Check if this is Rice product - only Rice gets dynamic insights
