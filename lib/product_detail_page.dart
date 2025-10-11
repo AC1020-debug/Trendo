@@ -9,6 +9,11 @@ import '../utils/stock_analyzer.dart' as stock;
 import '../utils/ui_utils.dart' as ui;
 import '../models/enums.dart';
 import 'widget/draggable_chatbot.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'utils/ui_utils.dart';
+
 
 class ProductDetailPage extends StatefulWidget {
   final ProductData product;
@@ -22,6 +27,13 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final PageController _pageController = PageController();
   int _currentChartPage = 0;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Auto-load the QuickSight dashboard when page opens
+    _fetchRiceSalesEmbedUrl();
+  }
 
   @override
   void dispose() {
@@ -30,51 +42,51 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   // Generate 1-month historical data + 3-day prediction (but keep 6 months for scrolling)
-  List<FlSpot> get6MonthTrendData() {
-    List<FlSpot> spots = [];
+  // List<FlSpot> get6MonthTrendData() {
+  //   List<FlSpot> spots = [];
     
-    // Base parameters for more natural sales pattern
-    double baseValue = 5000; // Average sales around 5000
-    double trendSlope = 5; // Gradual upward trend
+  //   // Base parameters for more natural sales pattern
+  //   double baseValue = 5000; // Average sales around 5000
+  //   double trendSlope = 5; // Gradual upward trend
     
-    // Generate 6 months of data (180 days) with natural patterns
-    for (int i = 0; i <= 180; i++) {
-      // Base trend (gradual increase)
-      double trend = baseValue + (i * trendSlope);
+  //   // Generate 6 months of data (180 days) with natural patterns
+  //   for (int i = 0; i <= 180; i++) {
+  //     // Base trend (gradual increase)
+  //     double trend = baseValue + (i * trendSlope);
       
-      // Weekly pattern (weekend peaks)
-      int dayOfWeek = (i % 7);
-      double weeklyPattern = 0;
-      if (dayOfWeek == 5 || dayOfWeek == 6) { // Weekend
-        weeklyPattern = 800;
-      } else {
-        weeklyPattern = -200;
-      }
+  //     // Weekly pattern (weekend peaks)
+  //     int dayOfWeek = (i % 7);
+  //     double weeklyPattern = 0;
+  //     if (dayOfWeek == 5 || dayOfWeek == 6) { // Weekend
+  //       weeklyPattern = 800;
+  //     } else {
+  //       weeklyPattern = -200;
+  //     }
       
-      // Monthly seasonality (smooth wave)
-      double monthlyWave = 400 * math.sin((i / 30) * 2 * math.pi);
+  //     // Monthly seasonality (smooth wave)
+  //     double monthlyWave = 400 * math.sin((i / 30) * 2 * math.pi);
       
-      // Random daily variation (small noise)
-      double noise = (math.Random(i).nextDouble() - 0.5) * 300;
+  //     // Random daily variation (small noise)
+  //     double noise = (math.Random(i).nextDouble() - 0.5) * 300;
       
-      double value = trend + weeklyPattern + monthlyWave + noise;
-      spots.add(FlSpot(i.toDouble(), value.clamp(3000, 8000)));
-    }
+  //     double value = trend + weeklyPattern + monthlyWave + noise;
+  //     spots.add(FlSpot(i.toDouble(), value.clamp(3000, 8000)));
+  //   }
 
-    // Add prediction for next 3 days
-    double lastValue = spots.last.y;
-    double recentTrend = (spots.last.y - spots[spots.length - 7].y) / 7;
+  //   // Add prediction for next 3 days
+  //   double lastValue = spots.last.y;
+  //   double recentTrend = (spots.last.y - spots[spots.length - 7].y) / 7;
 
-    for (int i = 1; i <= 3; i++) {
-      int futureDayOfWeek = ((180 + i) % 7);
-      double weekendBoost = (futureDayOfWeek == 5 || futureDayOfWeek == 6) ? 600 : 0;
-      double predictedValue = lastValue + (recentTrend * i) + weekendBoost + 
-                              ((math.Random(180 + i).nextDouble() - 0.5) * 200);
-      spots.add(FlSpot(180.0 + i, predictedValue.clamp(3000, 8000)));
-    }
+  //   for (int i = 1; i <= 3; i++) {
+  //     int futureDayOfWeek = ((180 + i) % 7);
+  //     double weekendBoost = (futureDayOfWeek == 5 || futureDayOfWeek == 6) ? 600 : 0;
+  //     double predictedValue = lastValue + (recentTrend * i) + weekendBoost + 
+  //                             ((math.Random(180 + i).nextDouble() - 0.5) * 200);
+  //     spots.add(FlSpot(180.0 + i, predictedValue.clamp(3000, 8000)));
+  //   }
 
-    return spots;
-  }
+  //   return spots;
+  // }
 
   // Generate weekday vs weekend sales data for PAST WEEK ONLY
   List<FlSpot> getWeekdaySalesData() {
@@ -256,7 +268,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildChart6MonthTrend(context),
+                child: _buildChart6MonthTrend(),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -295,304 +307,228 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  Widget _buildChart6MonthTrend(BuildContext context) {
-    List<FlSpot> spots = get6MonthTrendData();
-    DateTime now = DateTime.now();
+  // State for QuickSight embed URL (Rice Sales)
+  String? _riceSalesEmbedUrl;
+  bool _isLoadingRiceSales = false;
+  String? _riceSalesError;
+  WebViewController? _riceSalesController;
+  DateTime? _riceSalesUrlFetchTime;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: ui.UIUtils.getCardBorderRadius(),
-        boxShadow: ui.UIUtils.getCardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Sales Trend Forecast',
-            style: TextStyle(
-              fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Container(width: 20, height: 3, color: Colors.blue[600]),
-              const SizedBox(width: 6),
-              Text(
-                'Historical',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+  // Fetch QuickSight embed URL
+  Future<void> _fetchRiceSalesEmbedUrl() async {
+    setState(() {
+      _isLoadingRiceSales = true;
+      _riceSalesError = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/embed-url?type=predict_rice',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final embedUrl = data['embedUrl'];
+        
+        setState(() {
+          _riceSalesEmbedUrl = embedUrl;
+          _riceSalesUrlFetchTime = DateTime.now();
+          _isLoadingRiceSales = false;
+          
+          // Create new WebView controller with the fresh URL
+          _riceSalesController = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(Colors.white)
+            ..setNavigationDelegate(
+              NavigationDelegate(
+                onPageStarted: (String url) {
+                  print('QuickSight page started loading: $url');
+                },
+                onPageFinished: (String url) {
+                  print('QuickSight page finished loading');
+                },
+                onWebResourceError: (WebResourceError error) {
+                  print('QuickSight error: ${error.description}');
+                  // If we get an auth error, the URL might be expired
+                  if (error.description.contains('401') || 
+                      error.description.contains('403') ||
+                      error.description.contains('authorization')) {
+                    setState(() {
+                      _riceSalesError = 'Session expired. Please reload the dashboard.';
+                      _riceSalesEmbedUrl = null;
+                    });
+                  }
+                },
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 20,
-                height: 3,
-                decoration: BoxDecoration(color: Colors.orange[600]),
-                child: CustomPaint(
-                  painter: DashedLinePainter(color: Colors.orange[600]!),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Prediction',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Stack(
+            )
+            ..loadRequest(Uri.parse(embedUrl));
+        });
+      } else {
+        final errorBody = response.body;
+        setState(() {
+          _riceSalesError = 'Failed to load dashboard (${response.statusCode}): $errorBody';
+          _isLoadingRiceSales = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _riceSalesError = 'Error loading dashboard: $e';
+        _isLoadingRiceSales = false;
+      });
+    }
+  }
+  
+  // Check if QuickSight URL needs refresh (URLs typically expire after 5 minutes)
+  bool _needsRiceSalesRefresh() {
+    if (_riceSalesUrlFetchTime == null) return false;
+    final timeSinceFetch = DateTime.now().difference(_riceSalesUrlFetchTime!);
+    return timeSinceFetch.inMinutes >= 4; // Refresh before 5-minute expiry
+  }
+
+  Widget _buildChart6MonthTrend() {
+  // Check if URL needs refresh
+  if (_riceSalesEmbedUrl != null && _needsRiceSalesRefresh()) {
+    // Silently refresh the URL in the background
+    Future.microtask(() => _fetchRiceSalesEmbedUrl());
+  }
+  
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: UIUtils.getCardBorderRadius(),
+      boxShadow: UIUtils.getCardShadow(),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                // Sticky Y-axis on the left
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 30,
-                  width: 50,
-                  child: Container(
-                    color: Colors.white,
-                    child: CustomPaint(
-                      painter: YAxisPainter(
-                        minY: 2500,
-                        maxY: 8500,
-                        interval: 1000,
-                      ),
-                    ),
-                  ),
-                ),
-                // Scrollable chart area with padding
-                Padding(
-                  padding: const EdgeInsets.only(left: 50),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    reverse: true,
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 3.2, // Increased width for better spacing
-                      padding: const EdgeInsets.only(top: 30, bottom: 30, right: 40, left: 20), // Added left padding
-                      child: LineChart(
-                        LineChartData(
-                          minX: -5, // Start slightly before 0 to prevent truncation
-                          maxX: 215, // Extended to give more space
-                          lineTouchData: LineTouchData(
-                            enabled: true,
-                            touchTooltipData: LineTouchTooltipData(
-                              tooltipBgColor: Colors.black87,
-                              tooltipRoundedRadius: 8,
-                              tooltipPadding: EdgeInsets.all(8),
-                              fitInsideHorizontally: true,
-                              fitInsideVertically: true,
-                              getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                                return touchedSpots.asMap().entries.map((entry) {
-                                  int index = entry.key;
-                                  LineBarSpot spot = entry.value;
-                                  
-                                  // Only show tooltip for valid data points
-                                  if (spot.x < 0 || spot.x > 210) return null;
-                                  
-                                  // Only show tooltip for historical line (index 0)
-                                  // or forecast line (index 1) when x > 180
-                                  if (index == 1 && spot.x <= 180) {
-                                    return null;
-                                  }
-                                  
-                                  if (index > 1) {
-                                    return null;
-                                  }
-                                  
-                                  String dateStr;
-                                  
-                                  if (spot.x < 180) {
-                                    // Days before today
-                                    DateTime date = now.subtract(
-                                      Duration(days: 180 - spot.x.toInt()),
-                                    );
-                                    dateStr = DateFormat('MMM d').format(date);
-                                  } else if (spot.x == 180) {
-                                    dateStr = 'Today';
-                                  } else {
-                                    // Forecast data
-                                    int forecastDay = ((spot.x - 180) / 10).round();
-                                    dateStr = 'D+$forecastDay';
-                                  }
-                                  
-                                  return LineTooltipItem(
-                                    '$dateStr\nRM${(spot.y).toStringAsFixed(0)}',
-                                    TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                            ),
-                          ),
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: 1000,
-                            getDrawingHorizontalLine: (value) {
-                              return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
-                            },
-                          ),
-                          titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, meta) {
-                                  if (value < 0 || value > 210) return const SizedBox();
-
-                                  DateTime date = now.subtract(
-                                    Duration(days: 180 - value.toInt()),
-                                  );
-
-                                  // Past 5 months (scrollable): Show month labels at start of each month
-                                  if (value < 150) {
-                                    // Show month label at the beginning of each month (approximately every 30 days)
-                                    if (value % 30 == 0 || value == 0) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8, left: 5), // Added left padding
-                                        child: Text(
-                                          DateFormat('MMM').format(date),
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                  // Last 30 days: Show dates every 5 days
-                                  else if (value >= 150 && value < 180) {
-                                    if ((value - 150) % 5 == 0) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          DateFormat('d/M').format(date),
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                  // Today marker
-                                  else if (value == 180) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        'Today',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.blue[800],
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  // Forecast days (D+1, D+2, D+3)
-                                  else if (value > 180 && value <= 210) {
-                                    if ((value - 180) % 10 == 0) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          'D+${((value - 180) / 10).toInt()}',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.orange[700],
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                  
-                                  return const SizedBox();
-                                },
-                              ),
-                            ),
-                          ),
-                          borderData: FlBorderData(
-                            show: true,
-                            border: Border(
-                              bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                              left: BorderSide(color: Colors.grey[300]!, width: 1),
-                            ),
-                          ),
-                          minY: 2500,
-                          maxY: 8500,
-                          lineBarsData: [
-                            // Historical data line
-                            LineChartBarData(
-                              spots: spots.where((s) => s.x <= 180).toList(),
-                              isCurved: true,
-                              curveSmoothness: 0.4,
-                              color: Colors.blue[600],
-                              barWidth: 3,
-                              dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Colors.blue[600]!.withOpacity(0.1),
-                              ),
-                            ),
-                            // Forecast data line with expanded x-scale
-                            LineChartBarData(
-                              spots: [
-                                spots[180], // Today
-                                FlSpot(190, spots[181].y), // D+1
-                                FlSpot(200, spots[182].y), // D+2
-                                FlSpot(210, spots[183].y), // D+3
-                              ],
-                              isCurved: true,
-                              curveSmoothness: 0.4,
-                              color: Colors.orange[600],
-                              barWidth: 3,
-                              dashArray: [8, 4],
-                              dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, percent, barData, index) {
-                                  return FlDotCirclePainter(
-                                    radius: 6,
-                                    color: Colors.orange[600]!,
-                                    strokeWidth: 2,
-                                    strokeColor: Colors.white,
-                                  );
-                                },
-                              ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Colors.orange[600]!.withOpacity(0.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                Icon(Icons.grass, color: Colors.green[600], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Rice Sales',
+                  style: TextStyle(
+                    fontSize: UIUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
                   ),
                 ),
               ],
             ),
+            // Refresh button only
+            if (_riceSalesEmbedUrl != null)
+              IconButton(
+                onPressed: _isLoadingRiceSales ? null : _fetchRiceSalesEmbedUrl,
+                icon: Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: _isLoadingRiceSales ? Colors.grey : Colors.blue[600],
+                ),
+                tooltip: 'Refresh Dashboard',
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // QuickSight Dashboard Container - FIX: Use Expanded instead of fixed height
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _buildRiceSalesContent(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRiceSalesContent() {
+  // Remove the initial state with "Load Dashboard" button
+  // Start directly with loading state
+  
+  if (_isLoadingRiceSales) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading dashboard...',
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This may take a few seconds',
+            style: TextStyle(color: Colors.grey[500], fontSize: 12),
           ),
         ],
       ),
     );
   }
+
+  if (_riceSalesError != null) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to Load Dashboard',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _riceSalesError!,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchRiceSalesEmbedUrl,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  if (_riceSalesEmbedUrl != null && _riceSalesController != null) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: WebViewWidget(
+        controller: _riceSalesController!,
+      ),
+    );
+  }
+
+  return const SizedBox.shrink();
+}
+
 
   Widget _buildChartWeekdayWeekend(BuildContext context) {
     List<FlSpot> spots = getWeekdaySalesData();

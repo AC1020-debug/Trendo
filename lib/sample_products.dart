@@ -12,10 +12,10 @@ List<ProductData> sampleProducts = [
   ProductData(
     name: 'Rice',
     forecast: 'RM35,000 (1,200 units)',
-    currentStock: '80 units',
-    daysWithoutStock: '3 days',
-    recommendation: 'Urgent restock needed — replenish within 3 days',
-    stockStatus: 'Low Stock',
+    currentStock: '110 units',
+    daysWithoutStock: '6 days',
+    recommendation: '-',
+    stockStatus: 'Medium Stock',
   ),
   ProductData(
     name: 'Cooking Oil',
