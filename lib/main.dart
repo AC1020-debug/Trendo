@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'amplifyconfig.dart';
+import 'auth/auth_wrapper.dart';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'homepage.dart';
 // import 'widget/draggable_chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  if (!Amplify.isConfigured) {
+    final auth = AmplifyAuthCognito();
+    await Amplify.addPlugin(auth);
+
+    try {
+      await Amplify.configure(amplifyconfig);
+      print("Amplify configured successfully");
+    } catch (e) {
+      print("Error configuring Amplify: $e");
+    }
+  }
+
   runApp(const TrendoApp());
 }
 
@@ -21,12 +38,7 @@ class TrendoApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: Stack(
-        children: [
-          const HomePage(),   // all your app’s navigation
-          // const DraggableChatbot(), // global FAB
-        ],
-      ),
+      home: const AuthWrapper(),
     );
   }
 }
