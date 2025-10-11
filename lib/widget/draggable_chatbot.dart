@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class DraggableChatbot extends StatefulWidget {
   const DraggableChatbot({Key? key}) : super(key: key);
@@ -9,7 +12,7 @@ class DraggableChatbot extends StatefulWidget {
 
 class _DraggableChatbotState extends State<DraggableChatbot> {
   static Offset? savedPosition;
-  late Offset position; // Change to 'late' and non-nullable
+  late Offset position;
 
   @override
   void initState() {
@@ -17,7 +20,6 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
     print('DraggableChatbot initState called');
     print('savedPosition: $savedPosition');
     
-    // Initialize position immediately - don't wait for postFrameCallback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       
@@ -26,7 +28,6 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
       
       print('Screen size in callback: $screenSize');
       
-      // Update position after first frame if needed
       final newPosition = savedPosition ?? Offset(
         screenSize.width - buttonSize - 5,
         screenSize.height - buttonSize - 85,
@@ -44,11 +45,9 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
   Widget build(BuildContext context) {
     print('DraggableChatbot build called');
     
-    // Calculate position immediately in build if not set
     final screenSize = MediaQuery.of(context).size;
     final buttonSize = 60.0;
     
-    // Initialize position here for first build
     if (!_isInitialized) {
       position = savedPosition ?? Offset(
         screenSize.width - buttonSize - 5,
@@ -102,8 +101,8 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
       child: Opacity(
         opacity: 0.6,
         child: Container(
-          width: 50,
-          height: 50,
+          width: 70,
+          height: 70,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue[600]!, Colors.blue[400]!],
@@ -122,8 +121,8 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
           child: Center(
             child: Image.asset(
               'assets/icon/robot.png',
-              width: 35,
-              height: 35,
+              width: 50,
+              height: 50,
             ),
           ),
         ),
@@ -132,7 +131,7 @@ class _DraggableChatbotState extends State<DraggableChatbot> {
   }
 }
 
-// Chatbot Page (unchanged from before)
+// Chatbot Page with API Integration
 class ChatbotPage extends StatefulWidget {
   const ChatbotPage({Key? key}) : super(key: key);
 
@@ -143,6 +142,8 @@ class ChatbotPage extends StatefulWidget {
 class _ChatbotPageState extends State<ChatbotPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+  
   List<ChatMessage> messages = [
     ChatMessage(
       text: "Hello! I'm your AI assistant. How can I help you today?",
@@ -158,52 +159,36 @@ class _ChatbotPageState extends State<ChatbotPage> {
     super.dispose();
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-
-    setState(() {
-      messages.add(
-        ChatMessage(
-          text: _messageController.text,
-          isUser: true,
-          timestamp: DateTime.now(),
-        ),
+  Future<String> _getAIResponseFromAPI(String userMessage) async {
+    const String apiUrl = 'https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/ask';
+    
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'prompt': userMessage,
+        }),
       );
-    });
 
-    String userMessage = _messageController.text;
-    _messageController.clear();
-
-    Future.delayed(Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-
-    Future.delayed(Duration(seconds: 1), () {
-      setState(() {
-        messages.add(
-          ChatMessage(
-            text: _getAIResponse(userMessage),
-            isUser: false,
-            timestamp: DateTime.now(),
-          ),
-        );
-      });
-
-      Future.delayed(Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      });
-    });
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        // Adjust this based on your actual API response structure
+        // Common patterns: responseData['response'], responseData['answer'], responseData['data']
+        return responseData['response'] ?? responseData['answer'] ?? responseData.toString();
+      } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
+        return _getFallbackResponse(userMessage);
+      }
+    } catch (e) {
+      print('Error calling API: $e');
+      return _getFallbackResponse(userMessage);
+    }
   }
 
-  String _getAIResponse(String userMessage) {
+  String _getFallbackResponse(String userMessage) {
     String lowerMessage = userMessage.toLowerCase();
 
     if (lowerMessage.contains('stock') || lowerMessage.contains('inventory')) {
@@ -220,6 +205,61 @@ class _ChatbotPageState extends State<ChatbotPage> {
     } else {
       return "I understand you're asking about: \"$userMessage\". Could you provide more details so I can assist you better?";
     }
+  }
+
+  void _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    final userMessage = _messageController.text;
+    
+    setState(() {
+      messages.add(
+        ChatMessage(
+          text: userMessage,
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
+      _isLoading = true;
+    });
+
+    _messageController.clear();
+
+    // Scroll to bottom after user message
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    // Get AI response from API
+    final aiResponse = await _getAIResponseFromAPI(userMessage);
+
+    setState(() {
+      messages.add(
+        ChatMessage(
+          text: aiResponse,
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+      _isLoading = false;
+    });
+
+    // Scroll to bottom after AI response
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -242,7 +282,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
                 shape: BoxShape.circle,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(4.0), // optional padding
+                padding: const EdgeInsets.all(4.0),
                 child: Image.asset(
                   'assets/icon/robot.png',
                   width: 28,
@@ -277,14 +317,54 @@ class _ChatbotPageState extends State<ChatbotPage> {
             child: ListView.builder(
               controller: _scrollController,
               padding: EdgeInsets.all(16),
-              itemCount: messages.length,
+              itemCount: messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == messages.length && _isLoading) {
+                  return _buildLoadingIndicator();
+                }
                 return _buildMessageBubble(messages[index]);
               },
             ),
           ),
           _buildMessageInput(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(16).copyWith(
+            bottomLeft: Radius.circular(4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Thinking...',
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -312,14 +392,58 @@ class _ChatbotPageState extends State<ChatbotPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              message.text,
-              style: TextStyle(
-                fontSize: 15,
-                color: message.isUser ? Colors.white : Colors.grey[800],
-                height: 1.4,
-              ),
-            ),
+            // Use Markdown widget for AI responses, regular Text for user messages
+            message.isUser
+                ? Text(
+                    message.text,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.white,
+                      height: 1.4,
+                    ),
+                  )
+                : MarkdownBody(
+                    data: message.text,
+                    styleSheet: MarkdownStyleSheet(
+                      p: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey[800],
+                        height: 1.4,
+                      ),
+                      strong: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[900],
+                      ),
+                      em: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[800],
+                      ),
+                      listBullet: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey[800],
+                      ),
+                      code: TextStyle(
+                        backgroundColor: Colors.grey[300],
+                        color: Colors.grey[900],
+                        fontFamily: 'monospace',
+                      ),
+                      h1: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[900],
+                      ),
+                      h2: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[900],
+                      ),
+                      h3: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[900],
+                      ),
+                    ),
+                  ),
             SizedBox(height: 4),
             Text(
               _formatTime(message.timestamp),
@@ -352,8 +476,9 @@ class _ChatbotPageState extends State<ChatbotPage> {
           Expanded(
             child: TextField(
               controller: _messageController,
+              enabled: !_isLoading,
               decoration: InputDecoration(
-                hintText: 'Type your message...',
+                hintText: _isLoading ? 'Waiting for response...' : 'Type your message...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide(color: Colors.grey[300]!),
@@ -363,21 +488,21 @@ class _ChatbotPageState extends State<ChatbotPage> {
                   vertical: 10,
                 ),
                 filled: true,
-                fillColor: Colors.grey[50],
+                fillColor: _isLoading ? Colors.grey[100] : Colors.grey[50],
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
+              onSubmitted: (_) => _isLoading ? null : _sendMessage(),
             ),
           ),
           SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.blue[600],
+              color: _isLoading ? Colors.grey[400] : Colors.blue[600],
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              onPressed: _sendMessage,
+              onPressed: _isLoading ? null : _sendMessage,
               icon: Icon(Icons.send, color: Colors.white),
             ),
           ),
