@@ -50,9 +50,20 @@ class _RecommendationPageMonthlyState extends State<RecommendationPageMonthly> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sales Forecast'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.blue[600],
+        elevation: 4,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+        ),
+        title: Text(
+          'Monthly Insights', 
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -91,6 +102,12 @@ class _RecommendationPageMonthlyState extends State<RecommendationPageMonthly> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildTextCard(
+                          title: 'Executive Summary',
+                          icon: Icons.summarize,
+                          color: Colors.deepPurple,
+                          content: insightData?['executive_summary'] ?? '',
+                        ),
                         _buildSectionCard(
                           title: 'Key Insights',
                           icon: Icons.lightbulb,

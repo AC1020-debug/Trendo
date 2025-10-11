@@ -23,7 +23,7 @@ class _RecommendationPagePromoState extends State<RecommendationPagePromo> {
   Future<void> fetchInsights() async {
     try {
       final response = await http.get(
-        Uri.parse('https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/insights?type=promo'),
+        Uri.parse('https://keugh3ttkl.execute-api.us-east-1.amazonaws.com/dev/promotion?type=insights'),
       );
 
       if (response.statusCode == 200) {
@@ -50,9 +50,20 @@ class _RecommendationPagePromoState extends State<RecommendationPagePromo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Promotion Recommendations'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.blue[600],
+        elevation: 4,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+        ),
+        title: Text(
+          'Promotion Insights', 
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -91,53 +102,54 @@ class _RecommendationPagePromoState extends State<RecommendationPagePromo> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildTextCard(
+                          title: 'Executive Summary',
+                          icon: Icons.summarize,
+                          color: Colors.deepPurple,
+                          content: insightData?['executive_summary'] ?? '',
+                        ),
                         _buildSectionCard(
-                          title: 'Key Insights',
+                          title: 'Key Findings',
                           icon: Icons.lightbulb,
                           color: Colors.amber,
-                          items: insightData?['key_insights'] ?? [],
+                          items: insightData?['key_findings'] ?? [],
                         ),
                         const SizedBox(height: 16),
                         _buildSectionCard(
-                          title: 'Trends & Patterns',
-                          icon: Icons.trending_up,
-                          color: Colors.green,
-                          items: insightData?['trends_patterns'] ?? [],
+                          title: 'Product Effectiveness',
+                          icon: Icons.check_circle,
+                          color: Colors.teal,
+                          items: insightData?['product_effectiveness'] ?? [],
                         ),
                         const SizedBox(height: 16),
                         _buildSectionCard(
-                          title: 'Stock & Inventory Insights',
+                          title: 'Promotion Impact',
                           icon: Icons.inventory_2,
                           color: Colors.blue,
-                          items: insightData?['stock_inventory_insights'] ?? [],
+                          items: insightData?['promotion_impact'] ?? [],
                         ),
                         const SizedBox(height: 16),
                         _buildTextCard(
-                          title: 'Business Impact',
+                          title: 'Business Recommendations',
                           icon: Icons.business_center,
                           color: Colors.purple,
-                          content: insightData?['business_impact'] ?? '',
+                          content: (insightData?['business_recommendations'] is List)
+                            ? (insightData!['business_recommendations'] as List).join('\n\n• ')
+                            : (insightData?['business_recommendations'] ?? ''),
                         ),
                         const SizedBox(height: 16),
                         _buildSectionCard(
-                          title: 'Actionable Recommendations',
-                          icon: Icons.check_circle,
-                          color: Colors.teal,
-                          items: insightData?['actionable_recommendations'] ?? [],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSectionCard(
-                          title: 'Risk Factors',
+                          title: 'Risk Assessment',
                           icon: Icons.warning,
                           color: Colors.orange,
-                          items: insightData?['risk_factors'] ?? [],
+                          items: insightData?['risk_assessment'] ?? [],
                         ),
                         const SizedBox(height: 16),
                         _buildSectionCard(
-                          title: 'Next Steps',
+                          title: 'Next Actions',
                           icon: Icons.next_plan,
                           color: Colors.indigo,
-                          items: insightData?['next_steps'] ?? [],
+                          items: insightData?['next_actions'] ?? [],
                         ),
                       ],
                     ),
