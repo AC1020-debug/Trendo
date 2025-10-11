@@ -11,10 +11,10 @@ List<ProductData> sampleProducts = [
   ),
   ProductData(
     name: 'Rice',
-    forecast: 'RM35,000 (1,200 units)',
-    currentStock: '110 units',
-    daysWithoutStock: '6 days',
-    recommendation: '-',
+    forecast: 'RM50396.86 / 2,356 units',
+    currentStock: '7656 units',
+    daysWithoutStock: '10 days',
+    recommendation: 'Restock 184 units of Rice for Cheras outlets',
     stockStatus: 'Medium Stock',
   ),
   ProductData(

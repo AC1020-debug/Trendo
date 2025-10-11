@@ -33,6 +33,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Map<String, dynamic>? _chart3Insights; // Promotion analysis
   bool _isLoadingInsights = false;
   String? _insightsError;
+
+  Object? _apiCurrentStock;
+  Object? _apiDaysWithoutStock;
+  Object? _apiForecast;
+  bool _hasLoadedStockData = false;
   
   @override
   void initState() {
@@ -132,10 +137,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildStatusCard(BuildContext context) {
-    // Use StockAnalyzer for comprehensive analysis
+    bool isRiceProduct = widget.product.name.toLowerCase().contains('rice');
+
+    String? currentStockDisplay;
+    String? daysWithoutStockStr;
+    
+    if (isRiceProduct && _apiCurrentStock != null) {
+      int stockValue = _apiCurrentStock as int;
+      currentStockDisplay = '$stockValue units';
+    } else {
+      currentStockDisplay = widget.product.currentStock;
+    }
+    
+    if (isRiceProduct && _apiDaysWithoutStock != null) {
+      int daysValue = _apiDaysWithoutStock as int;
+      daysWithoutStockStr = '$daysValue days';
+    } else {
+      daysWithoutStockStr = widget.product.daysWithoutStock;
+    }
+    
+    String? forecast = isRiceProduct && _apiForecast != null 
+        ? (_apiForecast as String?) 
+        : widget.product.forecast;
+
     stock.StockAnalysisResult analysis = stock.StockAnalyzer.analyzeStock(
-      widget.product.daysWithoutStock,
-      widget.product.forecast,
+      daysWithoutStockStr,
+      forecast ?? widget.product.forecast,
     );
 
     return Container(
@@ -149,13 +176,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Status:',
-            style: TextStyle(
-              fontSize: ui.UIUtils.getResponsiveFontSize(context, 18),
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Status:',
+                style: TextStyle(
+                  fontSize: ui.UIUtils.getResponsiveFontSize(context, 18),
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              if (isRiceProduct && !_hasLoadedStockData && _isLoadingInsights)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Container(
@@ -193,28 +234,87 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
           const SizedBox(height: 16),
-          if (widget.product.currentStock != null)
-            Text(
-              'Current Stock: ${widget.product.currentStock}',
-              style: TextStyle(
-                fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-                color: Colors.grey[700],
+          if (currentStockDisplay != null)
+            Row(
+              children: [
+                Text(
+                  'Current Stock: ',
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    color: Colors.grey[700],
+                  ),
+                ),
+                Text(
+                  currentStockDisplay,
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    color: Colors.blue[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isRiceProduct && _hasLoadedStockData)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    ),
+                  ),
+              ],
+            ),
+          if (daysWithoutStockStr != null)
+            Row(
+              children: [
+                Text(
+                  'Days until without Stock: ',
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    color: Colors.grey[700],
+                  ),
+                ),
+                Text(
+                  daysWithoutStockStr,
+                  style: TextStyle(
+                    fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                    color: Colors.blue[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isRiceProduct && _hasLoadedStockData)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    ),
+                  ),
+              ],
+            ),
+          // Forecast with better layout
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Forecast (Next 3 Days):',
+                style: TextStyle(
+                  fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
+                  color: Colors.grey[700],
+                ),
               ),
-            ),
-          if (widget.product.daysWithoutStock != null)
-            Text(
-              'Days until without Stock: ${widget.product.daysWithoutStock}',
-              style: TextStyle(
-                fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-                color: Colors.grey[700],
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      forecast ?? widget.product.forecast,
+                      style: TextStyle(
+                        fontSize: ui.UIUtils.getResponsiveFontSize(context, 15),
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          Text(
-            'Forecast: ${widget.product.forecast}',
-            style: TextStyle(
-              fontSize: ui.UIUtils.getResponsiveFontSize(context, 16),
-              color: Colors.grey[700],
-            ),
+            ],
           ),
         ],
       ),
@@ -378,6 +478,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         setState(() {
           if (chartIndex == 0) {
             _chart1Insights = data;
+            
+            // EXTRACT STOCK DATA FROM API RESPONSE
+            if (!_hasLoadedStockData && data['result'] != null) {
+              _extractStockData(data['result']);
+              _hasLoadedStockData = true;
+            }
           } else if (chartIndex == 1) {
             _chart2Insights = data;
           } else if (chartIndex == 2) {
@@ -396,6 +502,46 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         _insightsError = 'Error loading insights: $e';
         _isLoadingInsights = false;
       });
+    }
+  }
+
+  // ADD THIS NEW METHOD:
+  void _extractStockData(Map<String, dynamic> result) {
+    // Calculate total current stock from all outlets
+    if (result['outlet_analysis'] != null) {
+      List outlets = result['outlet_analysis'] as List;
+      int totalStock = 0;
+      for (var outlet in outlets) {
+        totalStock += (outlet['current_stock'] as num?)?.toInt() ?? 0;
+      }
+      _apiCurrentStock = totalStock; // This will store as Object?
+    }
+    
+    // Calculate days until without stock
+    if (result['quantity_summary'] != null) {
+      var qtySummary = result['quantity_summary'] as Map<String, dynamic>;
+      double avgDailyPredicted = (qtySummary['avg_daily_predicted_quantity'] as num?)?.toDouble() ?? 1;
+      
+      if (_apiCurrentStock != null && avgDailyPredicted > 0) {
+        int currentStockValue = (_apiCurrentStock as int);
+        _apiDaysWithoutStock = (currentStockValue / avgDailyPredicted).ceil();
+      }
+    }
+    
+    // Set forecast from sales summary
+    if (result['sales_summary'] != null && result['quantity_summary'] != null) {
+      var salesSummary = result['sales_summary'] as Map<String, dynamic>;
+      var quantitySummary = result['quantity_summary'] as Map<String, dynamic>;
+      
+      // Get predicted sales and quantity for next 3 days
+      double forecastSales = (salesSummary['total_predicted_sales_rm'] as num?)?.toDouble() ?? 0;
+      double forecastQuantity = (quantitySummary['total_predicted_quantity'] as num?)?.toDouble() ?? 0;
+      
+      // Format the forecast string
+      String salesFormatted = 'RM${forecastSales.toStringAsFixed(2)}';
+      String quantityFormatted = '${forecastQuantity.toStringAsFixed(0)} units';
+      
+      _apiForecast = '$salesFormatted / $quantityFormatted (Next 3 days)';
     }
   }
   
@@ -548,15 +694,12 @@ Widget _buildRiceSalesContent() {
   return const SizedBox.shrink();
 }
 
-
-
 // State for QuickSight embed URL (Weekly Rice Sales)
 String? _riceWeeklySalesEmbedUrl;
 bool _isLoadingRiceWeeklySales = false;
 String? _riceWeeklySalesError;
 WebViewController? _riceWeeklySalesController;
 DateTime? _riceWeeklySalesUrlFetchTime;
-
 
 // Fetch QuickSight embed URL for weekly sales
 Future<void> _fetchRiceWeeklySalesEmbedUrl() async {

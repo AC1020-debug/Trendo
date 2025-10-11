@@ -686,7 +686,7 @@ class _HomePageState extends State<HomePage> {
             child: _buildStatItem(
               icon: Icons.inventory_2,
               label: 'In Stock',
-              value: '1,234',
+              value: '10,722',
               color: Colors.green,
             ),
           ),
@@ -695,7 +695,7 @@ class _HomePageState extends State<HomePage> {
             child: _buildStatItem(
               icon: Icons.warning_amber_rounded,
               label: 'Low Stock',
-              value: '2',
+              value: '3',
               color: Colors.orange,
             ),
           ),
