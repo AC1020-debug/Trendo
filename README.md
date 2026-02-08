@@ -1,6 +1,6 @@
 # trendo
 
-A new Flutter project.
+A new AWS AI & Flutter project.
 
 ## Getting Started
 
